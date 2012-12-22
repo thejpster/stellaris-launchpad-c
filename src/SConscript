@@ -1,0 +1,48 @@
+"""
+Builds a simple example application which runs bare-metal on a TI Stellaris Launchpad.
+
+Copyright (c) 2012 theJPster (github@thejpster.org.uk)
+"""
+
+
+env = Environment()
+
+# See ../prerequisites.sh
+FLASH_TOOL = "sudo ./lm4tools/lm4flash/lm4flash"
+
+# See ../prerequisites.sh
+env.Replace(CC="arm-linux-gnueabi-gcc")
+env.Replace(AS="arm-linux-gnueabi-as")
+env.Replace(LD="arm-linux-gnueabi-ld")
+
+# Builder which uses objcopy to turn the .elf into something we can flash
+strip = Builder(action='arm-linux-gnueabi-objcopy -O binary ${SOURCE} ${TARGET}')
+env.Append(BUILDERS={'Strip': strip})
+
+# Builder to flash on to Launchpad board
+flash = Builder(action='%s ${SOURCE}' % FLASH_TOOL)
+env.Append(BUILDERS={'Flash': flash})
+
+# Set some sensible defaults for the Launchpad's processor
+env.Append(CCFLAGS=['-mcpu=cortex-m4', '-mthumb', '-O0', '-g', '-Wall', '-pedantic', '-std=c99'])
+# Link without standard library because we're using a Linux compiler but
+# writing bare-metal code.
+env.Append(LINKFLAGS=["-nostdlib", "-T", "basic.ld", "-Xlinker", "--build-id=none"])
+
+
+sources = [
+    'startup.c',  # Must come first
+    'main.c',
+]
+
+elf = env.Program(target='start.elf', source=sources)
+
+bin = env.Strip(target='start.bin', source=elf)
+
+fd = env.Flash(target='flash', source=bin)
+# All the user to call 'scons flash' to build and flash
+fda = env.Alias('flash', fd)
+env.AlwaysBuild(fda)
+
+# Don't flash by default, just build the .bin
+Default(bin)
