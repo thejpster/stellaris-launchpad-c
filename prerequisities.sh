@@ -28,7 +28,6 @@ fetch_lm4tools()
 	make
 }
 
-
 #fetch_ubuntu_compiler
 fetch_arm_compiler
 fetch_lm4tools

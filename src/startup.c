@@ -59,8 +59,8 @@ extern unsigned long _end_text;
 extern unsigned long _start_data;
 extern unsigned long _end_data;
 // .bss (uninitialized data to set to 0);
-extern unsigned long _start_bss;
-extern unsigned long _end_bss;
+extern unsigned long __bss_start__;
+extern unsigned long __bss_end__;
 
 // NVIC ISR table
 __attribute__ ((section(".nvic_table")))
@@ -261,8 +261,8 @@ void rst_handler(void)
     }
 
     // now set the .bss segment to 0!
-    dest = &_start_bss;
-    while (dest < &_end_bss)
+    dest = &__bss_start__;
+    while (dest < &__bss_end__)
     {
         *dest++ = 0;
     }

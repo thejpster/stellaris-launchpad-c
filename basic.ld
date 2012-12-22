@@ -88,10 +88,10 @@ SECTIONS
   */
   .bss : 
   {
-      _start_bss = .;   /* This is an index to the beginning of .bss segment. */
-      *(.bss.*)         /* The un-initialized data should go there.  */
-      *(COMMON)         /* All the other stuff should be put there */
-      _end_bss = .;     /* End index for .bss segment */
+      __bss_start__ = .;  /* This is an index to the beginning of .bss segment. */
+      *(.bss.*)           /* The un-initialized data should go there.  */
+      *(COMMON)           /* All the other stuff should be put there */
+      __bss_end__ = .;    /* End index for .bss segment */
   }>SRAM
 
   _heap_bottom = .;

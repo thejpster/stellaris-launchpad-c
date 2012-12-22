@@ -16,11 +16,11 @@
 * Defines
 ***************************************************/
 
-/* These are the LEDs on the Launchpad board (on GPIO_F) */
+/* The LEDs on the Launchpad board are pins GPIO_F1..3 */
 #define LED_RED (1<<1)
 #define LED_BLUE (1<<2)
 #define LED_GREEN (1<<3)
-/* These are the buttons */
+/* The buttons are pins GPIO_F0 and GPIO_F4*/
 #define BUTTON_ONE (1<<0)
 #define BUTTON_TWO (1<<4)
 
@@ -32,6 +32,17 @@
 **************************************************/
 
 static void busy_sleep(unsigned long wait_for);
+
+/**************************************************
+* Public Data
+**************************************************/
+
+/* None */
+
+/**************************************************
+* Private Data
+**************************************************/
+/* None */
 
 /**************************************************
 * Public Functions
@@ -87,6 +98,17 @@ int main(void)
     return 0;
 }
 
+/*
+ * To use the arm-none-eabi C library, we need to supply this
+ */
+void _exit(void)
+{
+    while(1)
+    {
+        /* Do nothing */
+    }
+}
+
 /**************************************************
 * Private Functions
 ***************************************************/
@@ -99,6 +121,8 @@ void busy_sleep(unsigned long wait_for)
     }
 }
 
+
 /**************************************************
 * End of file
 ***************************************************/
+
