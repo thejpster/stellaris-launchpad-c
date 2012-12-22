@@ -25,7 +25,7 @@
 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 *
 * File:         LM4F_startup.c.
-* Author:       Mauro Scomparin <http://scompoprojects.worpress.com>.
+* Author:       Mauro Scomparin <http://scompoprojects.wordpress.com>.
 * Version:      1.0.0.
 * Description:  LM4F120H5QR startup code.
 */

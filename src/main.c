@@ -17,12 +17,15 @@
 ***************************************************/
 
 /* These are the LEDs on the Launchpad board (on GPIO_F) */
-#define LED_RED 0x2
-#define LED_BLUE 0x4
-#define LED_GREEN 0x8
+#define LED_RED (1<<1)
+#define LED_BLUE (1<<2)
+#define LED_GREEN (1<<3)
+/* These are the buttons */
+#define BUTTON_ONE (1<<0)
+#define BUTTON_TWO (1<<4)
 
 /* So we can see the LEDs flashing */
-#define DELAY 1000000UL
+#define DELAY 300000UL
 
 /**************************************************
 * Function Prototypes
@@ -38,18 +41,45 @@ int main(void)
 {
     // enable PORT F GPIO peripheral
     SYSCTL_RCGC2_R = SYSCTL_RCGC2_GPIOF;
-    // set LED PORT F pins as outputs
-    GPIO_PORTF_DIR_R = LED_RED | LED_BLUE | LED_GREEN;
+    // The datasheet says wait after enabling GPIO
+    busy_sleep(10);
+
+    /* The GPIO for button one is multiplexed with NMI so we
+     * have to 'unlock' it before we can use it
+     */
+    GPIO_PORTF_LOCK_R = GPIO_LOCK_KEY; /* Unlock CR  */
+    GPIO_PORTF_CR_R |= BUTTON_ONE; /* Allow F0 to be changed */
+    GPIO_PORTF_LOCK_R = 0; /* Lock CR again */
+
     // enable digital for LED PORT F pins
-    GPIO_PORTF_DEN_R = LED_RED | LED_BLUE | LED_GREEN;
+    GPIO_PORTF_DEN_R = LED_RED | LED_BLUE | LED_GREEN | BUTTON_ONE | BUTTON_TWO;
+    // set LED PORT F pins as outputs (rest are inputs)
+    GPIO_PORTF_DIR_R = LED_RED | LED_BLUE | LED_GREEN;
+    // Enable weak pullups
+    GPIO_PORTF_DR2R_R = BUTTON_ONE | BUTTON_TWO;
+    GPIO_PORTF_PUR_R = BUTTON_ONE | BUTTON_TWO;
 
     while (1)
     {
-        GPIO_PORTF_DATA_R = LED_RED;
+        GPIO_PORTF_DATA_R = 0;
         busy_sleep(DELAY);
-        GPIO_PORTF_DATA_R = LED_BLUE;
-        busy_sleep(DELAY);
-        GPIO_PORTF_DATA_R = LED_GREEN;
+
+        unsigned int buttons = GPIO_PORTF_DATA_R;
+        if ((buttons & BUTTON_ONE) == 0)
+        {
+            /* Button one pressed as input is low */
+            GPIO_PORTF_DATA_R = LED_BLUE;
+        }
+        else if ((buttons & BUTTON_TWO) == 0)
+        {
+            /* Button two pressed as input is low */
+            GPIO_PORTF_DATA_R = LED_GREEN;
+        }
+        else
+        {
+            /* Neither button pressed */
+            GPIO_PORTF_DATA_R = LED_RED;
+        }
         busy_sleep(DELAY);
     }
 
