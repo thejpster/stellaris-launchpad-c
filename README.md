@@ -11,5 +11,5 @@ compiler and there's a shell script that will fetch both of those for you.
 
 Thanks must go to
 
-* Mauro Scomparin <http://scompoprojects.worpress.com>
+* Mauro Scomparin <http://scompoprojects.wordpress.com>
 

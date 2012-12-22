@@ -36,6 +36,8 @@ sources = [
 ]
 
 elf = env.Program(target='start.elf', source=sources)
+# SCons doesn't notice the linker script is a dependency, so tell it
+Depends(elf, '../basic.ld')
 
 bin = env.Strip(target='start.bin', source=elf)
 
