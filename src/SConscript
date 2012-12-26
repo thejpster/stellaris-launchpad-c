@@ -1,17 +1,17 @@
 """
 Builds a simple example application which runs bare-metal on a TI Stellaris Launchpad.
 
-If you have the Ubuntu toolchain installed, this will build the example:
-    $ scons
+If you have the arm-none-eabi toolchain installed, this will build the example:
+    $ scons 
 
 This will build and flash the example on to your Launchpad:
     $ scons flash
 
-If you have the arm-none-eabi toolchain installed, this will build the example:
-    $ scons TOOLCHAIN=embedded
+If you have the Ubuntu toolchain installed, this will build the example:
+    $ scons TOOLCHAIN=ubuntu
 
 This will build and flash the example on to your Launchpad:
-    $ scons TOOLCHAIN=embedded flash
+    $ scons TOOLCHAIN=ubuntu flash
 
 The arm-none-eabi toolchain has a C library, and the Ubuntu one doesn't (well not
 one we can use because it's actually an ARM Linux compiler). The Ubuntu one is
@@ -25,16 +25,17 @@ env = Environment()
 # See ../prerequisites.sh
 FLASH_TOOL = "sudo ./lm4tools/lm4flash/lm4flash"
 
-TOOLCHAIN = ARGUMENTS.get("TOOLCHAIN", "ubuntu") # "embedded" or "ubuntu"
+TOOLCHAIN = ARGUMENTS.get("TOOLCHAIN", "embedded")  # "embedded" or "ubuntu"
 
 if TOOLCHAIN == "ubuntu":
     # If you have the Ubuntu cross compiler installed, you want this
     ARM_TOOL_PREFIX = "arm-linux-gnueabi"
-    # We can't use their standard Library, it's for Linux
+    # We can't use their standard Library, it's for Linux. This means
+    # you don't get strlen, memcpy, printf, etc.
     env.Append(LINKFLAGS=["-nostdlib", "-Xlinker", "--build-id=none"])
 elif TOOLCHAIN == "embedded":
-    # If you have installed the toolchain from https://launchpad.net/gcc-arm-embedded, you want this one
-    # This compiler comes with a bare-metal C library
+    # If you have installed the toolchain from https://launchpad.net/gcc-arm-embedded,
+    # you want this option. This compiler comes with a bare-metal C library
     ARM_TOOL_PREFIX = "./gcc-arm-none-eabi-4_6-2012q4/bin/arm-none-eabi"
 else:
     raise Exception("TOOLCHAIN must be 'ubuntu' or 'embedded'")
@@ -52,17 +53,30 @@ flash = Builder(action='%s ${SOURCE}' % FLASH_TOOL)
 env.Append(BUILDERS={'Flash': flash})
 
 # Set some sensible defaults for the Launchpad's processor
-env.Append(CCFLAGS=['-mcpu=cortex-m4', '-mthumb', '-O0', '-g', '-Wall', '-pedantic', '-std=c99'])
+env.Append(CCFLAGS=[
+    '-mcpu=cortex-m4',
+    '-mthumb',
+    '-O0',
+    '-g',
+    '-Wall',
+    '-pedantic',
+    '-std=c99',
+    '-fno-stack-protector',
+    '-Isrc'
+    ])
 # Use our custom linker script
-env.Append(LINKFLAGS=["-T", "basic.ld" ])
+env.Append(LINKFLAGS=["-T", "basic.ld"])
 
 sources = [
     'main.c',
-    'startup.c',
+    'misc/src/startup.c',
+    'misc/src/misc.c',
+    'gpio/src/gpio.c',
+    'uart/src/uart.c'
 ]
 
 # Compiles the ELF version of our program
-elf = env.Program(target='start.elf', source= sources)
+elf = env.Program(target='start.elf', source=sources)
 # SCons doesn't notice the linker script is a dependency, so tell it
 Depends(elf, '../basic.ld')
 

@@ -30,6 +30,8 @@
 * Description:  LM4F120H5QR startup code.
 */
 
+#include "uart/uart.h"
+
 //-----------------------------------------------------------------------------
 //                           Functions declarations
 //-----------------------------------------------------------------------------
@@ -93,8 +95,8 @@ unsigned long myvectors[] =
     (unsigned long) empty_def_handler,      // GPIO Port C                      18
     (unsigned long) empty_def_handler,      // GPIO Port D                      19
     (unsigned long) empty_def_handler,      // GPIO Port E                      20
-    (unsigned long) empty_def_handler,      // UART 0                           21
-    (unsigned long) empty_def_handler,      // UART 1                           22
+    (unsigned long) uart0_irq,              // UART 0                           21
+    (unsigned long) uart1_irq,              // UART 1                           22
     (unsigned long) empty_def_handler,      // SSI 0                            23
     (unsigned long) empty_def_handler,      // I2C 0                            24
     0,                                      // Reserved                         25
@@ -121,7 +123,7 @@ unsigned long myvectors[] =
     (unsigned long) empty_def_handler,      // GPIO Port F                      46
     0,                                      // Reserved                         47
     0,                                      // Reserved                         48
-    (unsigned long) empty_def_handler,      // UART 2                           49
+    (unsigned long) uart2_irq,              // UART 2                           49
     (unsigned long) empty_def_handler,      // SSI 1                            50
     (unsigned long) empty_def_handler,      // 16/32 bit timer 3 A              51
     (unsigned long) empty_def_handler,      // 16/32 bit timer 3 B              52
@@ -147,11 +149,11 @@ unsigned long myvectors[] =
     0,                                      // Reserved                         72
     (unsigned long) empty_def_handler,      // SSI 2                            73
     (unsigned long) empty_def_handler,      // SSI 2                            74
-    (unsigned long) empty_def_handler,      // UART 3                           75
-    (unsigned long) empty_def_handler,      // UART 4                           76
-    (unsigned long) empty_def_handler,      // UART 5                           77
-    (unsigned long) empty_def_handler,      // UART 6                           78
-    (unsigned long) empty_def_handler,      // UART 7                           79
+    (unsigned long) uart3_irq,              // UART 3                           75
+    (unsigned long) uart4_irq,              // UART 4                           76
+    (unsigned long) uart5_irq,              // UART 5                           77
+    (unsigned long) uart6_irq,              // UART 6                           78
+    (unsigned long) uart7_irq,              // UART 7                           79
     0,                                      // Reserved                         80
     0,                                      // Reserved                         81
     0,                                      // Reserved                         82
