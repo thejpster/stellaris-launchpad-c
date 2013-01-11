@@ -63,10 +63,6 @@ SECTIONS
     {
         KEEP(*(.nvic_table)) /* This must be first */
         *(.text*)            /* This contains the code after the ISR table. */
-        *(.glue_7)
-        *(.glue_7t)
-        *(.vfp11_veneer)
-        *(.v4_bx)
         *(.init)
         *(.fini)
         *(.rodata*)          /* Read only data.  */
