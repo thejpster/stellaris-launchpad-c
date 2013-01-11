@@ -62,11 +62,34 @@ SECTIONS
     .text : 
     {
         KEEP(*(.nvic_table)) /* This must be first */
-        *(.text.*)           /* This contains the code after the ISR table. */
-        *(.rodata.*)         /* Read only data.  */
+        *(.text*)            /* This contains the code after the ISR table. */
+        *(.glue_7)
+        *(.glue_7t)
+        *(.vfp11_veneer)
+        *(.v4_bx)
+        *(.init)
+        *(.fini)
+        *(.rodata*)          /* Read only data.  */
         _end_text = .;       /* This is an index to the end of .text segment. */
     }>FLASH
-    
+
+    .ARM.exidx : ALIGN(4)
+    {
+        *(.ARM.exidx*)
+    }>FLASH
+
+    .ARM.extab : ALIGN(4)
+    {
+        *(.ARM.extab*)
+    }>FLASH
+
+    .eh_frame : ALIGN(4)
+    {
+        *(.eh_frame*)
+    }>FLASH
+
+    _start_data_flash = ALIGN(8);
+
     /* 
      * .data segment must be placed in RAM but it's originally stored in FLASH
      * So I set the data segment in ram, but I specify the load address with the AT
@@ -74,30 +97,29 @@ SECTIONS
      * (Look at the LD documentation. (Optional Section Attributes)) 
      * Thanks https://github.com/utzig for the hints!
      */
-    .data : 
+    .data :
     {
         _start_data = .;  /* An index to the beginning of .data segment. */
         *(.data.*)        /* Initialised program data */
         _end_data = .;    /* And another index to the end of .data segment. */
-    }>SRAM AT >FLASH
-    
+    }>SRAM AT > FLASH
 
-  /* 
-  * .bss contains the unitialized variables and must be set as 0x0 during runtime.
-  * It should be loaded in RAM and particular care should be taken initializing them in the startup file. 
-  */
-  .bss : 
-  {
-      __bss_start__ = .;  /* This is an index to the beginning of .bss segment. */
-      *(.bss.*)           /* The un-initialized data should go there.  */
-      *(COMMON)           /* All the other stuff should be put there */
-      __bss_end__ = .;    /* End index for .bss segment */
-  }>SRAM
+    /* 
+    * .bss contains the unitialized variables and must be set as 0x0 during runtime.
+    * It should be loaded in RAM and particular care should be taken initializing them in the startup file. 
+    */
+    .bss : AT(ADDR(.data) + SIZEOF(.data))
+    {
+        __bss_start__ = .;  /* This is an index to the beginning of .bss segment. */
+        *(.bss.*)           /* The un-initialized data should go there.  */
+        *(COMMON)           /* All the other stuff should be put there */
+        __bss_end__ = .;    /* End index for .bss segment */
+    }>SRAM
 
-  _heap_bottom = .;
-  _heap_top = ORIGIN(SRAM) + LENGTH(SRAM) - _stack_size;
+    _heap_bottom = .;
+    _heap_top = ORIGIN(SRAM) + LENGTH(SRAM) - _stack_size;
 
-  _stack_bottom = _heap_top;
-  _stack_top = ORIGIN(SRAM) + LENGTH(SRAM);
+    _stack_bottom = _heap_top;
+    _stack_top = ORIGIN(SRAM) + LENGTH(SRAM);
   
 }

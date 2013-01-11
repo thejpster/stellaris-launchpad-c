@@ -58,6 +58,7 @@ extern unsigned long _stack_top;
 extern unsigned long _start_text;
 extern unsigned long _end_text;
 // .data (data to be copied on ram)
+extern unsigned long _start_data_flash;
 extern unsigned long _start_data;
 extern unsigned long _end_data;
 // .bss (uninitialized data to set to 0);
@@ -253,7 +254,7 @@ void rst_handler(void)
     unsigned long *dest;
 
     //this should be good!
-    src = &_end_text;
+    src = &_start_data_flash;
     dest = &_start_data;
 
     //this too

@@ -7,16 +7,6 @@ If you have the arm-none-eabi toolchain installed, this will build the example:
 This will build and flash the example on to your Launchpad:
     $ scons flash
 
-If you have the Ubuntu toolchain installed, this will build the example:
-    $ scons TOOLCHAIN=ubuntu
-
-This will build and flash the example on to your Launchpad:
-    $ scons TOOLCHAIN=ubuntu flash
-
-The arm-none-eabi toolchain has a C library, and the Ubuntu one doesn't (well not
-one we can use because it's actually an ARM Linux compiler). The Ubuntu one is
-easier to install though. Horses for courses.
-
 Copyright (c) 2012 theJPster (github@thejpster.org.uk)
 """
 
@@ -25,24 +15,14 @@ env = Environment()
 # See ../prerequisites.sh
 FLASH_TOOL = "sudo ./lm4tools/lm4flash/lm4flash"
 
-TOOLCHAIN = ARGUMENTS.get("TOOLCHAIN", "embedded")  # "embedded" or "ubuntu"
-
-if TOOLCHAIN == "ubuntu":
-    # If you have the Ubuntu cross compiler installed, you want this
-    ARM_TOOL_PREFIX = "arm-linux-gnueabi"
-    # We can't use their standard Library, it's for Linux. This means
-    # you don't get strlen, memcpy, printf, etc.
-    env.Append(LINKFLAGS=["-nostdlib", "-Xlinker", "--build-id=none"])
-elif TOOLCHAIN == "embedded":
-    # If you have installed the toolchain from https://launchpad.net/gcc-arm-embedded,
-    # you want this option. This compiler comes with a bare-metal C library
-    ARM_TOOL_PREFIX = "./gcc-arm-none-eabi-4_6-2012q4/bin/arm-none-eabi"
-else:
-    raise Exception("TOOLCHAIN must be 'ubuntu' or 'embedded'")
+# If you have installed the toolchain from https://launchpad.net/gcc-arm-embedded,
+# edit this to point to your gcc. This compiler comes with a bare-metal C library
+# called newlib
+ARM_TOOL_PREFIX = "./gcc-arm-none-eabi-4_6-2012q4/bin/arm-none-eabi"
 
 env.Replace(CC="%s-gcc" % ARM_TOOL_PREFIX)
 env.Replace(AS="%s-as" % ARM_TOOL_PREFIX)
-env.Replace(LD="%s-ld" % ARM_TOOL_PREFIX)
+env.Replace(LD="%s-gcc" % ARM_TOOL_PREFIX)
 
 # Builder which uses objcopy to turn the .elf into something we can flash
 strip = Builder(action='%s-objcopy -O binary ${SOURCE} ${TARGET}' % ARM_TOOL_PREFIX)
@@ -54,8 +34,10 @@ env.Append(BUILDERS={'Flash': flash})
 
 # Set some sensible defaults for the Launchpad's processor
 env.Append(CCFLAGS=[
-    '-mcpu=cortex-m4',
     '-mthumb',
+    '-mcpu=cortex-m4',
+    '-mfloat-abi=softfp',
+    '-mfpu=fpv4-sp-d16',
     '-O0',
     '-g',
     '-Wall',
@@ -65,14 +47,22 @@ env.Append(CCFLAGS=[
     '-Isrc'
     ])
 # Use our custom linker script
-env.Append(LINKFLAGS=["-T", "basic.ld"])
+env.Append(LINKFLAGS=[
+    "-Wl,-T,basic.ld",
+    "-mthumb",
+    '-mcpu=cortex-m4',
+    '-mfloat-abi=softfp',
+    '-mfpu=fpv4-sp-d16',
+    "-Wl,-Map,bin/start.map"
+    ])
 
 sources = [
     'main.c',
     'misc/src/startup.c',
     'misc/src/misc.c',
+    'misc/src/libc.c',
     'gpio/src/gpio.c',
-    'uart/src/uart.c'
+    'uart/src/uart.c',
 ]
 
 # Compiles the ELF version of our program
