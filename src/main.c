@@ -23,14 +23,29 @@
 ***************************************************/
 
 /* So we can see the LEDs flashing. Given the arithmetic in the 
-* busy_sleep loop, this is about 1 second */
-#define DELAY (CLOCK_RATE / 16)
+* busy_sleep loop, this is about 0.5 seconds */
+#define DELAY (CLOCK_RATE / 32)
+
+/**************************************************
+* Data Types
+**************************************************/
+
+typedef enum button_uart_override_t
+{
+    BUTTON_UART_OVERRIDE_NONE,
+    BUTTON_UART_OVERRIDE_ONE,
+    BUTTON_UART_OVERRIDE_TWO
+} button_uart_override_t;
 
 /**************************************************
 * Function Prototypes
 **************************************************/
 
-/* None */
+static void uart_chars_received(
+    uart_id_t uart_id,
+    const char* buffer,
+    size_t buffer_size
+);
 
 /**************************************************
 * Public Data
@@ -42,7 +57,7 @@
 * Private Data
 **************************************************/
 
-/* None */
+static button_uart_override_t g_override = BUTTON_UART_OVERRIDE_NONE;
 
 /**************************************************
 * Public Functions
@@ -50,6 +65,9 @@
 
 int main(void)
 {
+    button_uart_override_t override = g_override;
+    unsigned long buttons;
+
     /* Set system clock to 16MHz */
     set_clock();
 
@@ -61,12 +79,13 @@ int main(void)
         UART_PARITY_NONE,
         UART_DATABITS_8,
         UART_STOPBITS_1,
-        NULL
+        uart_chars_received
     );
 
     if (res != 0)
     {
-        flash_error(LED_RED, LED_GREEN, CLOCK_RATE * 1);
+        /* Warn user UART failed to init */
+        flash_error(LED_RED, LED_GREEN, DELAY / 4);
     }
 
     /* iprintf is a non-float version of printf (it won't print floats).
@@ -78,14 +97,38 @@ int main(void)
         GPIO_PORTF_DATA_R = 0;
         busy_sleep(DELAY);
 
-        unsigned int buttons = GPIO_PORTF_DATA_R;
-        if ((buttons & BUTTON_ONE) == 0)
+        if (override != g_override)
+        {
+            const char* msg;
+            override = g_override;
+            switch(override)
+            {
+            case BUTTON_UART_OVERRIDE_NONE:
+                msg = "off";
+                break;
+            case BUTTON_UART_OVERRIDE_ONE:
+                msg = "Button #1";
+                break;
+            case BUTTON_UART_OVERRIDE_TWO:
+                msg = "Button #2";
+                break;
+            default:
+                msg = "Unknown";
+                break;
+            }
+            iprintf("Override is now %s\n", msg);
+        }
+
+        buttons = GPIO_PORTF_DATA_R;
+
+        if (((buttons & BUTTON_ONE) == 0) || (override == BUTTON_UART_OVERRIDE_ONE))
         {
             /* Button one pressed as input is low */
             GPIO_PORTF_DATA_R = LED_BLUE;
+            /* We could also use iprintf instead */
             uart_write_str(UART_ID_0, "blue\n");
         }
-        else if ((buttons & BUTTON_TWO) == 0)
+        else if (((buttons & BUTTON_TWO) == 0) || (override == BUTTON_UART_OVERRIDE_TWO))
         {
             /* Button two pressed as input is low */
             GPIO_PORTF_DATA_R = LED_RED;
@@ -97,6 +140,7 @@ int main(void)
             GPIO_PORTF_DATA_R = LED_GREEN;
             uart_write_str(UART_ID_0, "green\n");
         }
+
         busy_sleep(DELAY);
     }
 
@@ -109,7 +153,37 @@ int main(void)
 * Private Functions
 ***************************************************/
 
-/* None */
+void uart_chars_received(
+    uart_id_t uart_id,
+    const char* buffer,
+    size_t buffer_size
+)
+{
+    /* Don't do any printf here - we're in an interrupt and we
+     * need to get out of it as quickly as possible.
+     */
+    size_t i;
+    for(i = 0; i < buffer_size; i++)
+    {
+        /* Deal with received characters */
+        char c = buffer[i];
+        switch(c)
+        {
+        case '1':
+            /* Pretend button one is pressed */
+            g_override = BUTTON_UART_OVERRIDE_ONE;
+            break; 
+        case '2':
+            /* Pretend button two is pressed */
+            g_override = BUTTON_UART_OVERRIDE_TWO;
+            break; 
+        default:
+            /* Stop pretending anything's pressed */
+            g_override = BUTTON_UART_OVERRIDE_NONE;
+            break; 
+        }
+    }
+}
 
 /**************************************************
 * End of file

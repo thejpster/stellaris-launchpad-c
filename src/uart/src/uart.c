@@ -11,7 +11,8 @@
 * References:
 *
 *     [1] - Stellaris® LM4F121H5QR Microcontroller
-*           Data Sheet
+*           Data Sheet.
+*           http://www.ti.com/lit/ds/symlink/lm4f120h5qr.pdf
 *****************************************************/
 
 /**************************************************
@@ -80,6 +81,19 @@ static uart_register_map_t * const uart_base[NUM_UARTS] =
     (uart_register_map_t*) 0x40011000,
     (uart_register_map_t*) 0x40012000,
     (uart_register_map_t*) 0x40013000
+};
+
+/* See table 2-9 in [1] */
+static const int uart_int_map[NUM_UARTS] =
+{
+    5, // EN0 UART 0
+    6, // EN0 UART 1
+    33, // EN1 UART 2
+    59, // EN1 UART 3
+    60, // EN1 UART 4
+    61, // EN1 UART 5
+    62, // EN1 UART 6
+    63  // EN1 UART 7
 };
 
 static uart_callback_fn_t interrupt_fn_table[NUM_UARTS];
@@ -183,9 +197,11 @@ int uart_init(
     {
         interrupt_fn_table[uart_id] = cbfn;
         uart_base[uart_id]->IM_R |= UART_IM_RXIM | UART_IM_RTIM;
+        enable_interrupt(uart_int_map[uart_id]);
     }
     else
     {
+        disable_interrupt(uart_int_map[uart_id]);
         uart_base[uart_id]->IM_R &= ~(UART_IM_RXIM | UART_IM_RTIM);
         interrupt_fn_table[uart_id] = NULL;
     }
@@ -353,15 +369,15 @@ void uart7_irq(void)
 void uart_irq(uart_id_t uart_id)
 {
     char buffer[FIFO_SIZE];
-    size_t read = 0;
+    size_t num_chars = 0;
     if (interrupt_fn_table[uart_id])
     {
-        while ((uart_base[uart_id]->FR_R & UART_FR_RXFE) == 0)
+        while ((num_chars < NUMELTS(buffer)) && ((uart_base[uart_id]->FR_R & UART_FR_RXFE) == 0))
         {
-            buffer[read] = uart_base[uart_id]->DR_R & 0xFF;
-            read++;
+            buffer[num_chars] = uart_base[uart_id]->DR_R & 0xFF;
+            num_chars++;
         }
-        interrupt_fn_table[uart_id](uart_id, buffer, read);
+        interrupt_fn_table[uart_id](uart_id, buffer, num_chars);
     }
 }
 
