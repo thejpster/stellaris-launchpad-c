@@ -63,6 +63,10 @@ extern void set_clock(void);
  */
 extern void busy_sleep(unsigned long delay);
 
+extern void enable_interrupt(int interrupt_id);
+
+extern void disable_interrupt(int interrupt_id);
+
 #ifdef __cplusplus
 }
 #endif

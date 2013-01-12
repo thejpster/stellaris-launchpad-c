@@ -12,6 +12,7 @@
 * Includes
 ***************************************************/
 
+#include "gpio/gpio.h"
 #include "misc/misc.h"
 
 /**************************************************
@@ -93,6 +94,70 @@ void busy_sleep(unsigned long delay)
     while(delay--)
     {
         /* Spin */
+    }
+}
+
+/*
+ * Enable an interrupt in the NIC.
+ * Writing a 0 to the enable register has no
+ * effect so we don't need to do read-modify-write.
+ */
+void enable_interrupt(int interrupt_id)
+{
+    int register_bank = interrupt_id / 32;
+    int bit_field = 1 << (interrupt_id % 32);
+    switch(register_bank)
+    {
+    case 0:
+        NVIC_EN0_R = bit_field; 
+        break;
+    case 1:
+        NVIC_EN1_R = bit_field; 
+        break;
+    case 2:
+        NVIC_EN2_R = bit_field; 
+        break;
+    case 3:
+        NVIC_EN3_R = bit_field; 
+        break;
+    case 4:
+        NVIC_EN4_R = bit_field; 
+        break;
+    default:
+        flash_error(LED_RED, LED_BLUE, CLOCK_RATE / 32);
+        break;
+    }
+}
+
+/*
+ * Disable an interrupt in the NIC.
+ * Writing a 0 to the disable register has no
+ * effect so we don't need to do read-modify-write.
+ */
+void disable_interrupt(int interrupt_id)
+{
+    int register_bank = interrupt_id / 32;
+    int bit_field = 1 << (interrupt_id % 32);
+    switch(register_bank)
+    {
+    case 0:
+        NVIC_DIS0_R = bit_field; 
+        break;
+    case 1:
+        NVIC_DIS1_R = bit_field; 
+        break;
+    case 2:
+        NVIC_DIS2_R = bit_field; 
+        break;
+    case 3:
+        NVIC_DIS3_R = bit_field; 
+        break;
+    case 4:
+        NVIC_DIS4_R = bit_field; 
+        break;
+    default:
+        flash_error(LED_RED, LED_BLUE, CLOCK_RATE / 32);
+        break;
     }
 }
 
