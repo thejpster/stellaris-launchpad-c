@@ -63,24 +63,24 @@ SECTIONS
 
     .text : 
     {
-        KEEP(*(.nvic_table)) /* This must be first. It tells the ARM where the stack and IRQ vectors are. */
-                             /* KEEP stops it being removed as we don't refer to it anywhere. */
-        *    (.text*)        /* This contains most of the executable code. */
-        *    (.init)         /* This section is used by the C-library, newlib. */
-        *    (.fini)         /* This section is used by the C-library, newlib. */
-        *    (.glue_7)       /* This section is used by the compiler */
-        *    (.glue_7t)      /* This section is used by the compiler */
-        *    (.vfp11_veneer) /* This section is used by the compiler */
-        *    (.v4_bx)        /* This section is used by the compiler */
-        *    (.ARM.extab*)   /* This section is used by the compiler */
-        *    (.rodata*)      /* Read only data (const variables) */
+        KEEP(*(.nvic_table))     /* This must be first. It tells the ARM where the stack and IRQ vectors are. */
+                                 /* KEEP stops it being removed as we don't refer to it anywhere. */
+        *    (.text .text.*)     /* This contains most of the executable code. */
+        *    (.init)             /* This section is used by the C-library, newlib. */
+        *    (.fini)             /* This section is used by the C-library, newlib. */
+        *    (.glue_7)           /* This section is used by the compiler */
+        *    (.glue_7t)          /* This section is used by the compiler */
+        *    (.vfp11_veneer)     /* This section is used by the compiler */
+        *    (.v4_bx)            /* This section is used by the compiler */
+        *    (.ARM.extab)        /* This section is used by the compiler */
+        *    (.rodata .rodata.*) /* Read only data (const variables) */
     } > FLASH
 
     /* This section are used by the compiler and/or the C-library, newlib. */
     /* It is a 'sorted' section and so must be separate from .text above. */
     .ARM.exidx :
     {
-        *(.ARM.exidx*)
+        *(.ARM.exidx)
     } > FLASH
 
     _start_data_flash = ALIGN(8);
@@ -95,8 +95,8 @@ SECTIONS
     .data : AT (_start_data_flash)
     {
         _start_data = .;  /* An index to the beginning of .data segment. */
-        *(.data.*)        /* Initialised program data */
-        *(.eh_frame*)     /* C++ exception handling data */
+        *(.data .data.*)  /* Initialised program data */
+        *(.eh_frame)      /* C++ exception handling data */
         _end_data = .;    /* And another index to the end of .data segment. */
     } > SRAM 
 
@@ -107,7 +107,7 @@ SECTIONS
     .bss :
     {
         __bss_start__ = .;  /* This is an index to the beginning of .bss segment. */
-        *(.bss.*)           /* The un-initialized data should go there.  */
+        *(.bss .bss.*)      /* The un-initialized data should go there.  */
         *(COMMON)           /* All the other stuff should be put there */
         __bss_end__ = .;    /* End index for .bss segment */
     } > SRAM
