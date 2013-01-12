@@ -29,7 +29,7 @@
 * Defines
 ***************************************************/
 
-#define FIFO_SIZE 16
+#define RX_IRQ_FIFO_SIZE 16
 
 /**************************************************
 * Function Prototypes
@@ -105,7 +105,8 @@ static uart_callback_fn_t interrupt_fn_table[NUM_UARTS];
 /**
  * @param uart_id   The UART to initialise
  * @param cbfn      This function will be called from interrupt context with
- *                  the data received.
+ *                  the data received. If NULL, received data can be read with
+ *                  uart_read().
  */
 int uart_init(
     uart_id_t uart_id,
@@ -121,11 +122,11 @@ int uart_init(
         return UART_ERROR_INVALID_ID;
     }
 
+
     /* See [1] p812 for these steps */
 
-    /* Actually it should be the GPIO module that does all this.
-     * The UART module doesn't care how its pins are muxed, just
-     * that they are
+    /* The GPIO module ensures the UART silicon is routed
+     * through to the UART pads.
      */
 
     /* Enable UART module in RCGUART register p306 */
@@ -368,7 +369,7 @@ void uart7_irq(void)
 
 void uart_irq(uart_id_t uart_id)
 {
-    char buffer[FIFO_SIZE];
+    char buffer[RX_IRQ_FIFO_SIZE];
     size_t num_chars = 0;
     if (interrupt_fn_table[uart_id])
     {
