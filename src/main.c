@@ -69,7 +69,9 @@ int main(void)
         flash_error(LED_RED, LED_GREEN, CLOCK_RATE * 1);
     }
 
-    printf("Hello %d!\n", 123);
+    /* iprintf is a non-float version of printf (it won't print floats).
+     * Using the full printf() would double the code size of this small example program. */ 
+    iprintf("Hello %s, %d!\n", "world", 123);
 
     while (1)
     {

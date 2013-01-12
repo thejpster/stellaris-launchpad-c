@@ -50,6 +50,8 @@ _stack_size = 0x1000;
 * Sections definitions:
 *
 * .text     - machine instructions.
+* .ARM*     - No idea
+* .eh_frame - No idea
 * .data     - initialized data defined in the program.
 * .bss      - un-initialized global and static variables (to be initialized to 0 before starting main).
 */
@@ -61,28 +63,25 @@ SECTIONS
 
     .text : 
     {
-        KEEP(*(.nvic_table)) /* This must be first */
-        *(.text*)            /* This contains the code after the ISR table. */
-        *(.init)
-        *(.fini)
-        *(.rodata*)          /* Read only data.  */
-        _end_text = .;       /* This is an index to the end of .text segment. */
-    }>FLASH
+        KEEP(*(.nvic_table)) /* This must be first. It tells the ARM where the stack and IRQ vectors are. */
+                             /* KEEP stops it being removed as we don't refer to it anywhere. */
+        *    (.text*)        /* This contains most of the executable code. */
+        *    (.init)         /* This section is used by the C-library, newlib. */
+        *    (.fini)         /* This section is used by the C-library, newlib. */
+        *    (.glue_7)       /* This section is used by the compiler */
+        *    (.glue_7t)      /* This section is used by the compiler */
+        *    (.vfp11_veneer) /* This section is used by the compiler */
+        *    (.v4_bx)        /* This section is used by the compiler */
+        *    (.ARM.extab*)   /* This section is used by the compiler */
+        *    (.rodata*)      /* Read only data (const variables) */
+    } > FLASH
 
-    .ARM.exidx : ALIGN(4)
+    /* This section are used by the compiler and/or the C-library, newlib. */
+    /* It is a 'sorted' section and so must be separate from .text above. */
+    .ARM.exidx :
     {
         *(.ARM.exidx*)
-    }>FLASH
-
-    .ARM.extab : ALIGN(4)
-    {
-        *(.ARM.extab*)
-    }>FLASH
-
-    .eh_frame : ALIGN(4)
-    {
-        *(.eh_frame*)
-    }>FLASH
+    } > FLASH
 
     _start_data_flash = ALIGN(8);
 
@@ -93,24 +92,25 @@ SECTIONS
      * (Look at the LD documentation. (Optional Section Attributes)) 
      * Thanks https://github.com/utzig for the hints!
      */
-    .data :
+    .data : AT (_start_data_flash)
     {
         _start_data = .;  /* An index to the beginning of .data segment. */
         *(.data.*)        /* Initialised program data */
+        *(.eh_frame*)     /* C++ exception handling data */
         _end_data = .;    /* And another index to the end of .data segment. */
-    }>SRAM AT > FLASH
+    } > SRAM 
 
     /* 
     * .bss contains the unitialized variables and must be set as 0x0 during runtime.
     * It should be loaded in RAM and particular care should be taken initializing them in the startup file. 
     */
-    .bss : AT(ADDR(.data) + SIZEOF(.data))
+    .bss :
     {
         __bss_start__ = .;  /* This is an index to the beginning of .bss segment. */
         *(.bss.*)           /* The un-initialized data should go there.  */
         *(COMMON)           /* All the other stuff should be put there */
         __bss_end__ = .;    /* End index for .bss segment */
-    }>SRAM
+    } > SRAM
 
     _heap_bottom = .;
     _heap_top = ORIGIN(SRAM) + LENGTH(SRAM) - _stack_size;
