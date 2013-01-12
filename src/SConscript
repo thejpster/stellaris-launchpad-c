@@ -28,6 +28,10 @@ env.Replace(LD="%s-gcc" % ARM_TOOL_PREFIX)
 strip = Builder(action='%s-objcopy -O binary ${SOURCE} ${TARGET}' % ARM_TOOL_PREFIX)
 env.Append(BUILDERS={'Strip': strip})
 
+# Builder which uses objdump to turn the .elf into assembly code
+objdump = Builder(action='%s-objdump -S -d ${SOURCE} > ${TARGET}' % ARM_TOOL_PREFIX)
+env.Append(BUILDERS={'Objdump': objdump})
+
 # Builder to flash on to Launchpad board
 flash = Builder(action='%s ${SOURCE}' % FLASH_TOOL)
 env.Append(BUILDERS={'Flash': flash})
@@ -38,7 +42,7 @@ env.Append(CCFLAGS=[
     '-mcpu=cortex-m4',
     '-mfloat-abi=softfp',
     '-mfpu=fpv4-sp-d16',
-    '-O0',
+    '-Os',
     '-g',
     '-Wall',
     '-pedantic',
@@ -76,9 +80,13 @@ bin = env.Strip(target='start.bin', source=elf)
 # Flashes the raw binary onto the board
 fd = env.Flash(target='flash', source=bin)
 
-# All the user to call 'scons flash' to build and flash
+# Allow the user to call 'scons flash' to build and flash
 fda = env.Alias('flash', fd)
 env.AlwaysBuild(fda)
+
+# Allow the user to call 'scons asm' to build and dump the assembler
+asm = env.Objdump(target='start.s', source=elf)
+env.Alias('asm', asm)
 
 # By default, just compile and don't flash
 Default(bin)
