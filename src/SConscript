@@ -24,6 +24,9 @@ env.Replace(CC="%s-gcc" % ARM_TOOL_PREFIX)
 env.Replace(AS="%s-as" % ARM_TOOL_PREFIX)
 env.Replace(LD="%s-gcc" % ARM_TOOL_PREFIX)
 
+env.Replace(CCCOMSTR = "[CC] $SOURCE -> $TARGET")
+env.Replace(LINKCOMSTR = "[LD] $SOURCE -> $TARGET")
+
 # Builder which uses objcopy to turn the .elf into something we can flash
 strip = Builder(action='%s-objcopy -O binary ${SOURCE} ${TARGET}' % ARM_TOOL_PREFIX)
 env.Append(BUILDERS={'Strip': strip})
@@ -67,6 +70,7 @@ sources = [
     'misc/src/libc.c',
     'gpio/src/gpio.c',
     'uart/src/uart.c',
+    '1wire/src/1wire.c',
 ]
 
 # Compiles the ELF version of our program

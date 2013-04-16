@@ -17,6 +17,7 @@
 #include "misc/misc.h"
 #include "uart/uart.h"
 #include "gpio/gpio.h"
+#include "1wire/1wire.h"
 
 /**************************************************
 * Defines
@@ -66,7 +67,6 @@ static button_uart_override_t g_override = BUTTON_UART_OVERRIDE_NONE;
 int main(void)
 {
     button_uart_override_t override = g_override;
-    unsigned long buttons;
 
     /* Set system clock to 16MHz */
     set_clock();
@@ -88,13 +88,17 @@ int main(void)
         flash_error(LED_RED, LED_GREEN, DELAY / 4);
     }
 
+    flash_error(LED_RED, LED_GREEN, DELAY / 4);
+
     /* iprintf is a non-float version of printf (it won't print floats).
      * Using the full printf() would double the code size of this small example program. */ 
     iprintf("Hello %s, %d!\n", "world", 123);
 
     while (1)
     {
-        GPIO_PORTF_DATA_R = 0;
+        gpio_set_output(LED_BLUE, 0);
+        gpio_set_output(LED_RED, 0);
+        gpio_set_output(LED_GREEN, 0);
         busy_sleep(DELAY);
 
         if (override != g_override)
@@ -119,25 +123,23 @@ int main(void)
             iprintf("Override is now %s\n", msg);
         }
 
-        buttons = GPIO_PORTF_DATA_R;
-
-        if (((buttons & BUTTON_ONE) == 0) || (override == BUTTON_UART_OVERRIDE_ONE))
+        if (gpio_read_input(BUTTON_ONE) || (override == BUTTON_UART_OVERRIDE_ONE))
         {
             /* Button one pressed as input is low */
-            GPIO_PORTF_DATA_R = LED_BLUE;
+            gpio_set_output(LED_BLUE, 1);
             /* We could also use iprintf instead */
             uart_write_str(UART_ID_0, "blue\n");
         }
-        else if (((buttons & BUTTON_TWO) == 0) || (override == BUTTON_UART_OVERRIDE_TWO))
+        else if (gpio_read_input(BUTTON_TWO) || (override == BUTTON_UART_OVERRIDE_TWO))
         {
             /* Button two pressed as input is low */
-            GPIO_PORTF_DATA_R = LED_RED;
+            gpio_set_output(LED_RED, 1);
             uart_write_str(UART_ID_0, "red\n");
         }
         else
         {
             /* Neither button pressed */
-            GPIO_PORTF_DATA_R = LED_GREEN;
+            gpio_set_output(LED_GREEN, 1);
             uart_write_str(UART_ID_0, "green\n");
         }
 

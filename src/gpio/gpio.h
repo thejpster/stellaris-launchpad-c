@@ -25,19 +25,35 @@ extern "C" {
 * Public Defines
 ***************************************************/
 
+/* Macros to pack a port and pin into one value */
+#define GPIO_MAKE_IO_PIN(port, pin)  ( (gpio_io_pin_t) ( ((port) << 8) | (1<<(pin)) ) )
+#define GPIO_GET_PORT(io_pin)  ((io_pin) >> 8)
+#define GPIO_GET_PIN(io_pin)  ((io_pin) & 0xFF)
+
 /* The LEDs on the Launchpad board are pins GPIO_F1..3 */
-#define LED_RED (1<<1)
-#define LED_BLUE (1<<2)
-#define LED_GREEN (1<<3)
+#define LED_RED   GPIO_MAKE_IO_PIN(GPIO_PORT_F, 1)
+#define LED_BLUE  GPIO_MAKE_IO_PIN(GPIO_PORT_F, 2)
+#define LED_GREEN GPIO_MAKE_IO_PIN(GPIO_PORT_F, 3)
+
 /* The buttons are pins GPIO_F0 and GPIO_F4*/
-#define BUTTON_ONE (1<<0)
-#define BUTTON_TWO (1<<4)
+#define BUTTON_ONE GPIO_MAKE_IO_PIN(GPIO_PORT_F, 0)
+#define BUTTON_TWO GPIO_MAKE_IO_PIN(GPIO_PORT_F, 4)
 
 /**************************************************
 * Public Data Types
 **************************************************/
 
-/* None */
+typedef enum gpio_port_t
+{
+	GPIO_PORT_A,
+	GPIO_PORT_B,
+	GPIO_PORT_C,
+	GPIO_PORT_D,
+	GPIO_PORT_E,
+	GPIO_PORT_F
+} gpio_port_t;
+
+typedef int gpio_io_pin_t;
 
 /**************************************************
 * Public Data
@@ -74,8 +90,27 @@ extern void enable_uart(uart_id_t uart_id);
  * A useful means of conveying errors when you don't have a 
  * working UART.
  */
-extern void flash_error(unsigned int pin_a, unsigned int pin_b, unsigned int delay);
+extern void flash_error(gpio_io_pin_t pin_a, gpio_io_pin_t pin_b, unsigned int delay);
 
+/*
+ * Set pin as output (low or high)
+ */
+extern void gpio_make_output(gpio_io_pin_t pin, int level);
+
+/*
+ * Set pin as input
+ */
+extern void gpio_make_input(gpio_io_pin_t pin);
+
+/*
+ * If a pin is already an output, set the level
+ */
+extern void gpio_set_output(gpio_io_pin_t pin, int level);
+
+/*
+ * If a pin is already an input, read the level. 0 for low, 1 for high.
+ */
+extern int gpio_read_input(gpio_io_pin_t pin);
 
 #ifdef __cplusplus
 }

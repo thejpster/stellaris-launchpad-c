@@ -67,14 +67,12 @@ void enable_buttons(void)
     GPIO_PORTF_LOCK_R = 0; /* Lock CR again */
 
     // enable digital for button pins
-    GPIO_PORTF_DEN_R |= BUTTON_ONE | BUTTON_TWO;
-
-    // set pins to inputs
-    GPIO_PORTF_DIR_R &= (BUTTON_ONE | BUTTON_TWO);
+    gpio_make_input(BUTTON_ONE);
+    gpio_make_input(BUTTON_TWO);
 
     // Enable weak pullups
-    GPIO_PORTF_DR2R_R |= BUTTON_ONE | BUTTON_TWO;
-    GPIO_PORTF_PUR_R |= BUTTON_ONE | BUTTON_TWO;
+    GPIO_PORTF_DR2R_R |= GPIO_GET_PIN(BUTTON_ONE) | GPIO_GET_PIN(BUTTON_TWO);
+    GPIO_PORTF_PUR_R |= GPIO_GET_PIN(BUTTON_ONE) | GPIO_GET_PIN(BUTTON_TWO);
 }
 
 void enable_leds(void)
@@ -85,10 +83,10 @@ void enable_leds(void)
     // The datasheet says wait after enabling GPIO
     busy_sleep(10);
 
-    // enable digital for LED PORT F pins
-    GPIO_PORTF_DEN_R |= LED_RED | LED_BLUE | LED_GREEN;
-    // set LED PORT F pins as outputs (rest are inputs)
-    GPIO_PORTF_DIR_R |= LED_RED | LED_BLUE | LED_GREEN;
+    // set LED pins as outputs (rest are inputs)
+    gpio_make_output(LED_RED, 0);
+    gpio_make_output(LED_BLUE, 0);
+    gpio_make_output(LED_GREEN, 0);
 }
 
 void enable_uart(uart_id_t uart_id)
@@ -162,15 +160,226 @@ void enable_uart(uart_id_t uart_id)
 
 }
 
-void flash_error(unsigned int pin_a, unsigned int pin_b, unsigned int delay)
+void flash_error(gpio_io_pin_t pin_a, gpio_io_pin_t pin_b, unsigned int delay)
 {
     while(1)
     {
-        GPIO_PORTF_DATA_R = pin_a;
+        gpio_set_output(pin_a, 1);
+        gpio_set_output(pin_b, 0);
         busy_sleep(delay);
-        GPIO_PORTF_DATA_R = pin_b;
+        gpio_set_output(pin_a, 0);
+        gpio_set_output(pin_b, 1);
         busy_sleep(delay);
     }
+}
+
+/*
+ * Set pin as output (low or high)
+ */
+void gpio_make_output(gpio_io_pin_t pin, int level)
+{
+    gpio_port_t port = GPIO_GET_PORT(pin);
+    unsigned long mask = GPIO_GET_PIN(pin);
+    switch(port)
+    {
+    case GPIO_PORT_A:
+        GPIO_PORTA_DEN_R |= mask;
+        if (level)
+        {
+            GPIO_PORTA_DATA_R |= mask;
+        }
+        else
+        {
+            GPIO_PORTA_DATA_R &= ~mask;
+        }
+        GPIO_PORTA_DIR_R |= mask;
+        break;
+    case GPIO_PORT_B:
+        GPIO_PORTB_DEN_R |= mask;
+        if (level)
+        {
+            GPIO_PORTB_DATA_R |= mask;
+        }
+        else
+        {
+            GPIO_PORTB_DATA_R &= ~mask;
+        }
+        GPIO_PORTB_DIR_R |= mask;
+        break;
+    case GPIO_PORT_C:
+        GPIO_PORTC_DEN_R |= mask;
+        if (level)
+        {
+            GPIO_PORTC_DATA_R |= mask;
+        }
+        else
+        {
+            GPIO_PORTC_DATA_R &= ~mask;
+        }
+        GPIO_PORTC_DIR_R |= mask;
+        break;
+    case GPIO_PORT_D:
+        GPIO_PORTD_DEN_R |= mask;
+        if (level)
+        {
+            GPIO_PORTD_DATA_R |= mask;
+        }
+        else
+        {
+            GPIO_PORTD_DATA_R &= ~mask;
+        }
+        GPIO_PORTD_DIR_R |= mask;
+        break;
+    case GPIO_PORT_E:
+        GPIO_PORTE_DEN_R |= mask;
+        if (level)
+        {
+            GPIO_PORTE_DATA_R |= mask;
+        }
+        else
+        {
+            GPIO_PORTE_DATA_R &= ~mask;
+        }
+        GPIO_PORTE_DIR_R |= mask;
+        break;
+    case GPIO_PORT_F:
+        GPIO_PORTF_DEN_R |= mask;
+        if (level)
+        {
+            GPIO_PORTF_DATA_R |= mask;
+        }
+        else
+        {
+            GPIO_PORTF_DATA_R &= ~mask;
+        }
+        GPIO_PORTF_DIR_R |= mask;
+        break;
+    }
+}
+
+/*
+ * Set pin as input
+ */
+void gpio_make_input(gpio_io_pin_t pin)
+{
+    gpio_port_t port = GPIO_GET_PORT(pin);
+    unsigned long mask = GPIO_GET_PIN(pin);
+    switch(port)
+    {
+    case GPIO_PORT_A:
+        GPIO_PORTA_DEN_R |= mask;
+        GPIO_PORTA_DIR_R &= ~mask;
+        break;
+    case GPIO_PORT_B:
+        GPIO_PORTB_DEN_R |= mask;
+        GPIO_PORTB_DIR_R &= ~mask;
+        break;
+    case GPIO_PORT_C:
+        GPIO_PORTC_DEN_R |= mask;
+        GPIO_PORTC_DIR_R &= ~mask;
+        break;
+    case GPIO_PORT_D:
+        GPIO_PORTD_DEN_R |= mask;
+        GPIO_PORTD_DIR_R &= ~mask;
+        break;
+    case GPIO_PORT_E:
+        GPIO_PORTE_DEN_R |= mask;
+        GPIO_PORTE_DIR_R &= ~mask;
+        break;
+    case GPIO_PORT_F:
+        GPIO_PORTF_DEN_R |= mask;
+        GPIO_PORTF_DIR_R &= ~mask;
+        break;
+    }
+}
+
+/*
+ * If a pin is already an output, set the level
+ */
+void gpio_set_output(gpio_io_pin_t pin, int level)
+{
+    gpio_port_t port = GPIO_GET_PORT(pin);
+    unsigned long mask = GPIO_GET_PIN(pin);
+    if (level)
+    {
+        switch(port)
+        {
+        case GPIO_PORT_A:
+            GPIO_PORTA_DATA_R |= mask;
+            break;
+        case GPIO_PORT_B:
+            GPIO_PORTB_DATA_R |= mask;
+            break;
+        case GPIO_PORT_C:
+            GPIO_PORTC_DATA_R |= mask;
+            break;
+        case GPIO_PORT_D:
+            GPIO_PORTD_DATA_R |= mask;
+            break;
+        case GPIO_PORT_E:
+            GPIO_PORTE_DATA_R |= mask;
+            break;
+        case GPIO_PORT_F:
+            GPIO_PORTF_DATA_R |= mask;
+            break;
+        }
+    }
+    else
+    {
+        switch(port)
+        {
+        case GPIO_PORT_A:
+            GPIO_PORTA_DATA_R &= ~mask;
+            break;
+        case GPIO_PORT_B:
+            GPIO_PORTB_DATA_R &= ~mask;
+            break;
+        case GPIO_PORT_C:
+            GPIO_PORTC_DATA_R &= ~mask;
+            break;
+        case GPIO_PORT_D:
+            GPIO_PORTD_DATA_R &= ~mask;
+            break;
+        case GPIO_PORT_E:
+            GPIO_PORTE_DATA_R &= ~mask;
+            break;
+        case GPIO_PORT_F:
+            GPIO_PORTF_DATA_R &= ~mask;
+            break;
+        }
+    }
+}
+
+/*
+ * If a pin is already an input, read the level. 0 for low, 1 for high.
+ */
+int gpio_read_input(gpio_io_pin_t pin)
+{
+    int result = 0;
+    gpio_port_t port = GPIO_GET_PORT(pin);
+    unsigned long mask = GPIO_GET_PIN(pin);
+    switch(port)
+    {
+    case GPIO_PORT_A:
+        result = (GPIO_PORTA_DATA_R & mask) ? 1 : 0;
+        break;
+    case GPIO_PORT_B:
+        result = (GPIO_PORTB_DATA_R & mask) ? 1 : 0;
+        break;
+    case GPIO_PORT_C:
+        result = (GPIO_PORTC_DATA_R & mask) ? 1 : 0;
+        break;
+    case GPIO_PORT_D:
+        result = (GPIO_PORTD_DATA_R & mask) ? 1 : 0;
+        break;
+    case GPIO_PORT_E:
+        result = (GPIO_PORTE_DATA_R & mask) ? 1 : 0;
+        break;
+    case GPIO_PORT_F:
+        result = (GPIO_PORTF_DATA_R & mask) ? 1 : 0;
+        break;
+    }
+    return result;
 }
 
 /**************************************************
