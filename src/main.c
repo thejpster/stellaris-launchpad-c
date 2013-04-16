@@ -88,8 +88,6 @@ int main(void)
         flash_error(LED_RED, LED_GREEN, DELAY / 4);
     }
 
-    flash_error(LED_RED, LED_GREEN, DELAY / 4);
-
     /* iprintf is a non-float version of printf (it won't print floats).
      * Using the full printf() would double the code size of this small example program. */ 
     iprintf("Hello %s, %d!\n", "world", 123);
@@ -123,14 +121,14 @@ int main(void)
             iprintf("Override is now %s\n", msg);
         }
 
-        if (gpio_read_input(BUTTON_ONE) || (override == BUTTON_UART_OVERRIDE_ONE))
+        if (!gpio_read_input(BUTTON_ONE) || (override == BUTTON_UART_OVERRIDE_ONE))
         {
             /* Button one pressed as input is low */
             gpio_set_output(LED_BLUE, 1);
             /* We could also use iprintf instead */
             uart_write_str(UART_ID_0, "blue\n");
         }
-        else if (gpio_read_input(BUTTON_TWO) || (override == BUTTON_UART_OVERRIDE_TWO))
+        else if (!gpio_read_input(BUTTON_TWO) || (override == BUTTON_UART_OVERRIDE_TWO))
         {
             /* Button two pressed as input is low */
             gpio_set_output(LED_RED, 1);

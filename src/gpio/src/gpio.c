@@ -59,13 +59,6 @@ void enable_buttons(void)
     // The datasheet says wait after enabling GPIO
     busy_sleep(10);
 
-    /* The GPIO for button one is multiplexed with NMI so we
-     * have to 'unlock' it before we can use it
-     */
-    GPIO_PORTF_LOCK_R = GPIO_LOCK_KEY; /* Unlock CR  */
-    GPIO_PORTF_CR_R |= BUTTON_ONE; /* Allow F0 to be changed */
-    GPIO_PORTF_LOCK_R = 0; /* Lock CR again */
-
     // enable digital for button pins
     gpio_make_input(BUTTON_ONE);
     gpio_make_input(BUTTON_TWO);
@@ -287,6 +280,15 @@ void gpio_make_input(gpio_io_pin_t pin)
         GPIO_PORTE_DIR_R &= ~mask;
         break;
     case GPIO_PORT_F:
+        /* The GPIO for button one is multiplexed with NMI so we
+         * have to 'unlock' it before we can use it
+         */
+        if (GPIO_GET_PIN(pin) == 1)
+        {
+            GPIO_PORTF_LOCK_R = GPIO_LOCK_KEY; /* Unlock CR  */
+            GPIO_PORTF_CR_R |= 1; /* Allow F0 to be changed */
+            GPIO_PORTF_LOCK_R = 0; /* Lock CR again */
+        }
         GPIO_PORTF_DEN_R |= mask;
         GPIO_PORTF_DIR_R &= ~mask;
         break;
