@@ -45,7 +45,7 @@ env.Append(CCFLAGS=[
     '-mcpu=cortex-m4',
     '-mfloat-abi=softfp',
     '-mfpu=fpv4-sp-d16',
-    '-Os',
+    '-O0',
     '-g',
     '-Wall',
     '-pedantic',

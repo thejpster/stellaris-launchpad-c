@@ -31,6 +31,8 @@
 */
 
 #include "uart/uart.h"
+#include "gpio/gpio.h"
+#include "misc/misc.h"
 
 //-----------------------------------------------------------------------------
 //                           Functions declarations
@@ -282,6 +284,7 @@ void nmi_handler(void)
     // Just loop forever, so if you want to debug the processor it's running.
     while (1)
     {
+        flash_error(LED_BLUE, LED_GREEN, CLOCK_RATE);
     }
 }
 
@@ -291,6 +294,7 @@ void hardfault_handler(void)
     // Just loop forever, so if you want to debug the processor it's running.
     while (1)
     {
+        flash_error(LED_BLUE, LED_RED, CLOCK_RATE);
     }
 }
 
@@ -300,5 +304,6 @@ void empty_def_handler(void)
     // Just loop forever, so if you want to debug the processor it's running.
     while (1)
     {
+        flash_error(LED_GREEN, LED_RED, CLOCK_RATE);
     }
 }
