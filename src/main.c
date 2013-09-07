@@ -17,14 +17,13 @@
 #include "misc/misc.h"
 #include "uart/uart.h"
 #include "gpio/gpio.h"
-#include "1wire/1wire.h"
 
 /**************************************************
 * Defines
 ***************************************************/
 
-/* So we can see the LEDs flashing. Given the arithmetic in the 
-* busy_sleep loop, this is about 0.5 seconds */
+/* So we can see the LEDs flashing. Given our busy_sleep
+* implementation, this is about 0.5 seconds */
 #define DELAY (CLOCK_RATE / 32)
 
 /**************************************************
@@ -44,7 +43,7 @@ typedef enum button_uart_override_t
 
 static void uart_chars_received(
     uart_id_t uart_id,
-    const char* buffer,
+    const char *buffer,
     size_t buffer_size
 );
 
@@ -74,13 +73,13 @@ int main(void)
     enable_peripherals();
 
     int res = uart_init(
-        UART_ID_0,
-        115200,
-        UART_PARITY_NONE,
-        UART_DATABITS_8,
-        UART_STOPBITS_1,
-        uart_chars_received
-    );
+                  UART_ID_0,
+                  115200,
+                  UART_PARITY_NONE,
+                  UART_DATABITS_8,
+                  UART_STOPBITS_1,
+                  uart_chars_received
+              );
 
     if (res != 0)
     {
@@ -89,7 +88,7 @@ int main(void)
     }
 
     /* iprintf is a non-float version of printf (it won't print floats).
-     * Using the full printf() would double the code size of this small example program. */ 
+     * Using the full printf() would double the code size of this small example program. */
     iprintf("Hello %s, %d!\n", "world", 123);
 
     while (1)
@@ -101,9 +100,9 @@ int main(void)
 
         if (override != g_override)
         {
-            const char* msg;
+            const char *msg;
             override = g_override;
-            switch(override)
+            switch (override)
             {
             case BUTTON_UART_OVERRIDE_NONE:
                 msg = "off";
@@ -155,7 +154,7 @@ int main(void)
 
 void uart_chars_received(
     uart_id_t uart_id,
-    const char* buffer,
+    const char *buffer,
     size_t buffer_size
 )
 {
@@ -163,24 +162,24 @@ void uart_chars_received(
      * need to get out of it as quickly as possible.
      */
     size_t i;
-    for(i = 0; i < buffer_size; i++)
+    for (i = 0; i < buffer_size; i++)
     {
         /* Deal with received characters */
         char c = buffer[i];
-        switch(c)
+        switch (c)
         {
         case '1':
             /* Pretend button one is pressed */
             g_override = BUTTON_UART_OVERRIDE_ONE;
-            break; 
+            break;
         case '2':
             /* Pretend button two is pressed */
             g_override = BUTTON_UART_OVERRIDE_TWO;
-            break; 
+            break;
         default:
             /* Stop pretending anything's pressed */
             g_override = BUTTON_UART_OVERRIDE_NONE;
-            break; 
+            break;
         }
     }
 }
