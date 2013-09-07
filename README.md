@@ -1,13 +1,19 @@
 launchpad
 =========
 
-Starter project for TI's Stellaris Launchpad that doesn't require you to have
-StellarisWare installed. This saves you a 340MB download and various lengthly
-click-through EULAs.
+Starter project for TI's Stellaris Launchpad that doesn't require you to have StellarisWare installed. This saves you a 340MB download and various lengthly click-through EULAs.
  
-The BSD-licensed header file for the Launchpad's microprocessor (LM4F120H5QR)
-is included in this project. All you need is the flash tool (lm4tools) and a
-compiler and there's a shell script that will fetch both of those for you.
+The BSD-licensed header file for the Launchpad's microprocessor (LM4F120H5QR) is included in this project. All you need is the flash tool (lm4tools) and a compiler and there's a shell script that will fetch both of those for you.
+
+Once you have the prerequisites (i.e. run prerequisities.sh), simply type:
+
+> scons
+
+to build and
+
+> scons flash
+
+to program. Connect a serial terminal of your choice to /dev/serial/by-id/usb-Texas* (probably a symlink to /dev/ttyACM0, but it depends on what else you have connected) to view the debug output. Press the buttons to change the colour of the LED.
 
 All source code that is marked "Copyright (c) 2012 theJPster" is subject to the following license:
 
