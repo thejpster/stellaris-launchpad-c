@@ -74,7 +74,10 @@ void set_clock(void)
      *
      * You can run off any of these clock sources directly, or use them to drive the 400MHz
      * Phase-locked-loop (PLL) and run off a division of that.
-     *
+     */
+
+#if (CLOCK_RATE == 16000000) || (CLOCK_RATE == 66666666)
+    /*
      * We're going to run at 16 MHz, which is a ratio of 1:1 with the MOSC.
      * This is the fastest we can run with the 16MHz crystal without using the PLL.
      *
@@ -82,7 +85,6 @@ void set_clock(void)
      *
      * The register we need to set is the Run-time Clock Config register (RCC).
      */
-
     unsigned long rcc = SYSCTL_RCC_R;
     // RCC SYSDIV field = 0x0
     CLEAR_BITS(rcc, SYSCTL_RCC_SYSDIV_M);
@@ -100,18 +102,53 @@ void set_clock(void)
     CLEAR_BITS(rcc, SYSCTL_RCC_MOSCDIS);
     // Write to register
     SYSCTL_RCC_R = rcc;
+
+    /* Let it stabilise */
+    busy_sleep(600000);
+#else
+#error CLOCK_RATE must be 16000000 or 66666666
+#endif
+
+#if CLOCK_RATE == 66666666
+    /*
+     * Now we're going to run at 66.67 MHz which is a ratio of 1:6 with the 400MHz PLL.
+     * As the PLL is divided down by two, we need a divisor of 3.
+     *
+     * We could get 80MHz if we danced with RCC2 instead and got 400MHz / 5.
+     */
+    /* Clear PLL lock status */
+    /* NB: MISC = Masked Interrupt State, not miscellaneous */
+    SYSCTL_MISC_R = SYSCTL_MISC_PLLLMIS;
+
+    /* Enable the PLL. We're OK, BYPASS is still set */
+    CLEAR_BITS(rcc, SYSCTL_RCC_PWRDN);
+    SYSCTL_RCC_R = rcc;
+
+    while((SYSCTL_RIS_R & SYSCTL_MISC_PLLLMIS) == 0)
+    {
+        /* Wait for PLL to lock */
+    }
+
+    /* Set up a /3 divider (by putting 0x02 in the bitfield) */
+    CLEAR_BITS(rcc, SYSCTL_RCC_SYSDIV_M);
+    SET_BITS(rcc, 2 << SYSCTL_RCC_SYSDIV_S);
+    /* Enable use of divider */
+    SET_BITS(rcc, SYSCTL_RCC_USESYSDIV);
+    /* Switch to PLL */
+    CLEAR_BITS(rcc, SYSCTL_RCC_BYPASS);
+    SYSCTL_RCC_R = rcc;
+
+#endif
 }
 
 /**
- * Rough and ready sleep function. Approx 8 clock ticks elapse
- * per 'delay', although compiler optimisations might 
- * massively reduce this.
+ * Rough and ready sleep function.
  */
 void busy_sleep(unsigned long delay)
 {
     while(delay--)
     {
-        /* Spin */
+        __asm("");
     }
 }
 

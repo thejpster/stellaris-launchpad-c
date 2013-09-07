@@ -88,8 +88,10 @@ sources = [
     'misc/src/libc.c',
     'gpio/src/gpio.c',
     'uart/src/uart.c',
-    '1wire/src/1wire.c',
 ]
+
+#env.Append(CCFLAGS=["-DCLOCK_RATE=16000000"])
+env.Append(CCFLAGS=["-DCLOCK_RATE=66666666"])
 
 # Compiles the ELF version of our program
 elf = env.Program(target='start.elf', source=sources)

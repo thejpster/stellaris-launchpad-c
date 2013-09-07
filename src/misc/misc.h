@@ -47,8 +47,6 @@ extern "C" {
 
 #define NUMELTS(x) ( sizeof(x) / sizeof((x)[0]) )
 
-#define CLOCK_RATE 16000000 /* see set_clock() */
-
 #define CLEAR_BITS(reg, bits) do { reg &= ~(bits); } while (0)
 
 #define SET_BITS(reg, bits) do { reg |= (bits); } while (0)
@@ -70,7 +68,7 @@ extern "C" {
 ***************************************************/
 
 /**
- * Set system clock to a hard-coded value of 16 MHz.
+ * Set system clock to a CLOCK_RATE
  */
 extern void set_clock(void);
 
