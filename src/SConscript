@@ -88,6 +88,7 @@ sources = [
     'misc/src/libc.c',
     'gpio/src/gpio.c',
     'uart/src/uart.c',
+    'lcd/src/lcd.c',
 ]
 
 #env.Append(CCFLAGS=["-DCLOCK_RATE=16000000"])
