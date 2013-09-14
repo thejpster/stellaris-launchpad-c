@@ -213,7 +213,35 @@ void lcd_set_pixel_width(int width)
  */
 void lcd_get_mode(struct lcd_mode_t *p_mode)
 {
+    uint8_t temp = 0;
+    SET_CS();
+    send_command(0xB1);
 
+    temp = read_data();
+    p_mode->colour_enhancement = (temp & (1 << 4)) ? 1 : 0;
+    p_mode->frc = (temp & (1 << 3)) ? 1 : 0;
+    p_mode->lshift_rising_edge = (temp & (1 << 2)) ? 1 : 0;
+    p_mode->horiz_active_high = (temp & (1 << 1)) ? 1 : 0;
+    p_mode->vert_active_high = (temp & (1 << 0)) ? 1 : 0;
+
+    temp = read_data();
+    p_mode->tft_type = ((temp >> 5) & 0x03);
+
+    temp = read_data();
+    p_mode->horiz_pixels = temp << 8;
+    temp = read_data();
+    p_mode->horiz_pixels |= temp;
+
+    temp = read_data();
+    p_mode->vert_pixels = temp << 8;
+    temp = read_data();
+    p_mode->vert_pixels |= temp;
+
+    temp = read_data();
+    p_mode->even_sequence = (temp >> 3) & 0x07;
+    p_mode->odd_sequence = (temp >> 0) & 0x07;
+
+    CLEAR_CS();
 }
 
 /**
@@ -221,7 +249,25 @@ void lcd_get_mode(struct lcd_mode_t *p_mode)
  */
 void lcd_get_version(struct lcd_ver_t *p_ver)
 {
+    uint8_t temp = 0;
+    SET_CS();
+    send_command(0xA1); /* Read Data Descriptor Block / DDB */
 
+    temp = read_data();
+    p_ver->supplier_id = temp << 8;
+    temp = read_data();
+    p_ver->supplier_id |= temp;
+
+    temp = read_data();
+    p_ver->product_id = temp;
+
+    temp = read_data();
+    p_ver->revision = temp;
+
+    /* Should be 0xFF */
+    read_data();
+
+    CLEAR_CS();
 }
 
 /**
@@ -266,6 +312,7 @@ void lcd_paint_fill_rectangle(
     set_region(x1, x2, y1, y2);
     while (size--)
     {
+        /* This is for 8 bit mode */
         send_data(bg >> 16);
         send_data(bg >> 8);
         send_data(bg >> 0);

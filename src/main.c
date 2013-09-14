@@ -35,6 +35,7 @@
 #include "misc/misc.h"
 #include "uart/uart.h"
 #include "gpio/gpio.h"
+#include "lcd/lcd.h"
 
 /**************************************************
 * Defines
@@ -48,12 +49,7 @@
 * Data Types
 **************************************************/
 
-typedef enum button_uart_override_t
-{
-    BUTTON_UART_OVERRIDE_NONE,
-    BUTTON_UART_OVERRIDE_ONE,
-    BUTTON_UART_OVERRIDE_TWO
-} button_uart_override_t;
+/* None */
 
 /**************************************************
 * Function Prototypes
@@ -75,7 +71,7 @@ static void uart_chars_received(
 * Private Data
 **************************************************/
 
-static button_uart_override_t g_override = BUTTON_UART_OVERRIDE_NONE;
+/* None */
 
 /**************************************************
 * Public Functions
@@ -83,7 +79,9 @@ static button_uart_override_t g_override = BUTTON_UART_OVERRIDE_NONE;
 
 int main(void)
 {
-    button_uart_override_t override = g_override;
+    int pixel_width;
+    struct lcd_ver_t ver;
+    struct lcd_mode_t mode;
 
     /* Set system clock to 16MHz */
     set_clock();
@@ -105,60 +103,69 @@ int main(void)
         flash_error(LED_RED, LED_GREEN, DELAY / 4);
     }
 
-    /* iprintf is a non-float version of printf (it won't print floats).
-     * Using the full printf() would double the code size of this small example program. */
-    iprintf("Hello %s, %d!\n", "world", 123);
+    lcd_init();
+
+    lcd_get_version(&ver);
+
+    iprintf("Supplier=0x%04x, Product=0x%02x, Rev=0x%02x\n", ver.supplier_id, ver.product_id, ver.revision);
+
+    lcd_get_mode(&mode);
+
+    iprintf("colour_enhancement=%c\n", mode.colour_enhancement ? 'Y' : 'N');
+    iprintf("frc=%c\n", mode.frc ? 'Y' : 'N');
+    iprintf("lshift_rising_edge=%c\n", mode.lshift_rising_edge ? 'Y' : 'N');
+    iprintf("horiz_active_high=%c\n", mode.horiz_active_high ? 'Y' : 'N');
+    iprintf("vert_active_high=%c\n", mode.vert_active_high ? 'Y' : 'N');
+    iprintf("tft_type=%x\n", mode.tft_type);
+    iprintf("horiz_pixels=%u\n", mode.horiz_pixels);
+    iprintf("vert_pixels=%u\n", mode.vert_pixels);
+    iprintf("even_sequence=%x\n", mode.even_sequence);
+    iprintf("odd_sequence=%x\n", mode.odd_sequence);
+
+    pixel_width = lcd_get_pixel_width();
+
+    printf("Pixel width is %d\n", pixel_width);
+
+    if (pixel_width != 8)
+    {
+        lcd_set_pixel_width(8);
+        pixel_width = lcd_get_pixel_width();
+        printf("Pixel width is now %d (should be 8!)\n", pixel_width);
+    }
 
     while (1)
     {
+        busy_sleep(DELAY);
+
+        gpio_set_output(LED_RED, 1);
         gpio_set_output(LED_BLUE, 0);
-        gpio_set_output(LED_RED, 0);
         gpio_set_output(LED_GREEN, 0);
-        busy_sleep(DELAY);
 
-        if (override != g_override)
-        {
-            const char *msg;
-            override = g_override;
-            switch (override)
-            {
-            case BUTTON_UART_OVERRIDE_NONE:
-                msg = "off";
-                break;
-            case BUTTON_UART_OVERRIDE_ONE:
-                msg = "Button #1";
-                break;
-            case BUTTON_UART_OVERRIDE_TWO:
-                msg = "Button #2";
-                break;
-            default:
-                msg = "Unknown";
-                break;
-            }
-            iprintf("Override is now %s\n", msg);
-        }
+        /*
+         * We should see RED square (top left), BLUE square (top right), GREEN
+         * square (down left), in time with the RGB led.
+         */
 
-        if (!gpio_read_input(BUTTON_ONE) || (override == BUTTON_UART_OVERRIDE_ONE))
-        {
-            /* Button one pressed as input is low */
-            gpio_set_output(LED_BLUE, 1);
-            /* We could also use iprintf instead */
-            uart_write_str(UART_ID_0, "blue\n");
-        }
-        else if (!gpio_read_input(BUTTON_TWO) || (override == BUTTON_UART_OVERRIDE_TWO))
-        {
-            /* Button two pressed as input is low */
-            gpio_set_output(LED_RED, 1);
-            uart_write_str(UART_ID_0, "red\n");
-        }
-        else
-        {
-            /* Neither button pressed */
-            gpio_set_output(LED_GREEN, 1);
-            uart_write_str(UART_ID_0, "green\n");
-        }
+        lcd_paint_clear_rectangle(0, 0, 479, 271);
+        lcd_paint_fill_rectangle(MAKE_COLOUR(0xFF, 0x00, 0x00), 0, 0, 100, 100);
 
         busy_sleep(DELAY);
+
+        gpio_set_output(LED_RED, 0);
+        gpio_set_output(LED_BLUE, 0);
+        gpio_set_output(LED_GREEN, 1);
+
+        lcd_paint_clear_rectangle(0, 0, 479, 271);
+        lcd_paint_fill_rectangle(MAKE_COLOUR(0x00, 0xFF, 0x00), 100, 0, 200, 100);
+
+        busy_sleep(DELAY);
+
+        gpio_set_output(LED_RED, 0);
+        gpio_set_output(LED_BLUE, 1);
+        gpio_set_output(LED_GREEN, 0);
+
+        lcd_paint_clear_rectangle(0, 0, 479, 271);
+        lcd_paint_fill_rectangle(MAKE_COLOUR(0x00, 0x00, 0xFF), 0, 100, 100, 200);
     }
 
     /* Shouldn't get here */
@@ -184,21 +191,9 @@ void uart_chars_received(
     {
         /* Deal with received characters */
         char c = buffer[i];
-        switch (c)
-        {
-        case '1':
-            /* Pretend button one is pressed */
-            g_override = BUTTON_UART_OVERRIDE_ONE;
-            break;
-        case '2':
-            /* Pretend button two is pressed */
-            g_override = BUTTON_UART_OVERRIDE_TWO;
-            break;
-        default:
-            /* Stop pretending anything's pressed */
-            g_override = BUTTON_UART_OVERRIDE_NONE;
-            break;
-        }
+
+        (void) c;
+
     }
 }
 
