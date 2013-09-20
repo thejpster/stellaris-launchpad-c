@@ -28,6 +28,7 @@
 * Includes
 ***************************************************/
 
+#include <stdio.h>
 #include "misc/misc.h"
 #include "gpio/gpio.h"
 #include "../lcd.h"
@@ -37,7 +38,7 @@
 ***************************************************/
 
 /* Really conservative default */
-#define STROBE_DELAY 100
+#define STROBE_DELAY 100 /* 100 = 28.1 us */
 #define STROBE_READ_DELAY 1000
 
 /* WR = pin E2 */
@@ -96,32 +97,7 @@ static void send_byte(uint8_t byte);
 /**
  * Will set up the GPIO for driving the LCD.
  *
- * The pinout is:
- *
- * /CS  = D2 (J3.05)
- * /RS  = D3 (J3.06)
- * /RD  = E1 (J3.07)
- * /WR  = E2 (J3.08)
- * /RST = E3 (J3.09)
- *
- * DATA00 = B0 (J1.03)
- * DATA01 = B1 (J1.04)
- * DATA02 = A2 (J2.10)
- * DATA03 = A3 (J2.09)
- * DATA04 = A4 (J2.08)
- * DATA05 = A5 (J1.08)
- * DATA06 = A6 (J1.09)
- * DATA07 = A7 (J1.10)
- *
- * In the future, I might add 16-bit mode:
- * DATA08 = F1 (J3.10)
- * DATA09 = F2 (J4.01)
- * DATA10 = F3 (J4.02)
- * DATA11 = F4 (J4.10)
- * DATA12 = C4 (J4.04)
- * DATA13 = C5 (J4.05)
- * DATA14 = C6 (J4.06)
- * DATA15 = C7 (J4.07)
+ * See header file for pinout.
  *
  */
 int lcd_init(void)
@@ -134,8 +110,15 @@ int lcd_init(void)
     gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_E, 2), 1);
     gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_E, 3), 1);
 
-    GPIO_PORTB_DEN_R |= 0x03;
-    GPIO_PORTA_DEN_R |= 0xFC;
+    /* 8-bit data bus */
+    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_D, 0), 1);
+    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_D, 1), 1);
+    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 2), 1);
+    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 3), 1);
+    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 4), 1);
+    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 5), 1);
+    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 6), 1);
+    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 7), 1);
 
     /* @todo Do an LCD comms test here? */
 
@@ -308,6 +291,7 @@ void lcd_paint_fill_rectangle(
 )
 {
     size_t size = (1 + x2 - x1) * (1 + y2 - y1);
+    iprintf("Painting %u pixels\n", size);
     SET_CS();
     set_region(x1, x2, y1, y2);
     while (size--)
@@ -467,7 +451,7 @@ static uint8_t read_data(
     SET_DATA();
     SET_RD();
     busy_sleep(STROBE_READ_DELAY);
-    result = (GPIO_PORTB_DATA_R & 0x03);
+    result = (GPIO_PORTD_DATA_R & 0x03);
     result |= (GPIO_PORTA_DATA_R & 0xFC);
     CLEAR_RD();
     return result;
@@ -477,10 +461,8 @@ static void send_byte(
     uint8_t byte
 )
 {
-    CLEAR_BITS(GPIO_PORTB_DATA_R, 0x03);
-    SET_BITS(GPIO_PORTB_DATA_R, byte & 0x03);
-    CLEAR_BITS(GPIO_PORTA_DATA_R, 0xFC);
-    SET_BITS(GPIO_PORTA_DATA_R, byte & 0xFC);
+    GPIO_PORTD_DATA_R = (GPIO_PORTD_DATA_R & 0xFC) | (byte & 0x03);
+    GPIO_PORTA_DATA_R = (byte & 0xFC) | (GPIO_PORTA_DATA_R & 0x03);
 }
 
 /**************************************************

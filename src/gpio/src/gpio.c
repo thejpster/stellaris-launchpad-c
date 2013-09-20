@@ -30,8 +30,9 @@
 * Includes
 ***************************************************/
 
-#include "misc/misc.h"
+#include <stdint.h>
 
+#include "misc/misc.h"
 #include "gpio/gpio.h"
 
 /**************************************************
@@ -44,7 +45,7 @@
 * Function Prototypes
 **************************************************/
 
- /* None */
+static void enable_gpio_module(gpio_port_t port);
 
 /**************************************************
 * Public Data
@@ -55,7 +56,6 @@
 /**************************************************
 * Private Data
 **************************************************/
-
 /* None */
 
 /**************************************************
@@ -71,12 +71,6 @@ void enable_peripherals(void)
 
 void enable_buttons(void)
 {
-    // enable PORT F GPIO peripheral using
-    // run-time clock gating control register 2
-    SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R5;
-    // The datasheet says wait after enabling GPIO
-    busy_sleep(10);
-
     // enable digital for button pins
     gpio_make_input(BUTTON_ONE);
     gpio_make_input(BUTTON_TWO);
@@ -88,12 +82,6 @@ void enable_buttons(void)
 
 void enable_leds(void)
 {
-    // enable PORT F GPIO peripheral using
-    // run-time clock gating control register 2
-    SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R5;
-    // The datasheet says wait after enabling GPIO
-    busy_sleep(10);
-
     // set LED pins as outputs (rest are inputs)
     gpio_make_output(LED_RED, 0);
     gpio_make_output(LED_BLUE, 0);
@@ -103,67 +91,67 @@ void enable_leds(void)
 void enable_uart(uart_id_t uart_id)
 {
     /* Enable clock and alt function for GPIO see [1] p303 / p584 */
-    switch(uart_id)
+    switch (uart_id)
     {
     case UART_ID_0: /* on PA0/PA1 */
-        SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R0;
+        enable_gpio_module(GPIO_PORT_A);
         GPIO_PORTA_AFSEL_R |= (1 << 1) | (1 << 0);
         GPIO_PORTA_DEN_R |= (1 << 1) | (1 << 0);
         GPIO_PORTA_PCTL_R &= ~(GPIO_PCTL_PA0_M | GPIO_PCTL_PA1_M);
-        GPIO_PORTA_PCTL_R |= GPIO_PCTL_PA0_U0RX | GPIO_PCTL_PA1_U0TX;  
+        GPIO_PORTA_PCTL_R |= GPIO_PCTL_PA0_U0RX | GPIO_PCTL_PA1_U0TX;
         break;
     case UART_ID_1: /* PB0/1 */
-        SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R1;
+        enable_gpio_module(GPIO_PORT_B);
         GPIO_PORTB_AFSEL_R |= (1 << 1) | (1 << 0);
         GPIO_PORTA_DEN_R |= (1 << 1) | (1 << 0);
         GPIO_PORTB_PCTL_R &= ~(GPIO_PCTL_PB0_M | GPIO_PCTL_PB1_M);
-        GPIO_PORTB_PCTL_R |= GPIO_PCTL_PB0_U1RX | GPIO_PCTL_PB1_U1TX;  
+        GPIO_PORTB_PCTL_R |= GPIO_PCTL_PB0_U1RX | GPIO_PCTL_PB1_U1TX;
         break;
     case UART_ID_2: /* On PD6/7 */
         /* This requires GPIO unlocking as PD7 is an NMI pin */
-        SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R3;
+        enable_gpio_module(GPIO_PORT_D);
         GPIO_PORTD_LOCK_R = GPIO_LOCK_KEY; /* Unlock CR  */
         GPIO_PORTD_CR_R |= (1 << 7); /* Allow PD7 to be changed */
         GPIO_PORTD_LOCK_R = 0; /* Lock CR again */
         GPIO_PORTD_AFSEL_R |= (1 << 6) | (1 << 7);
         GPIO_PORTA_DEN_R |= (1 << 6) | (1 << 7);
         GPIO_PORTD_PCTL_R &= ~(GPIO_PCTL_PD6_M | GPIO_PCTL_PD7_M);
-        GPIO_PORTD_PCTL_R |= GPIO_PCTL_PD6_U2RX | GPIO_PCTL_PD7_U2TX;  
+        GPIO_PORTD_PCTL_R |= GPIO_PCTL_PD6_U2RX | GPIO_PCTL_PD7_U2TX;
         break;
     case UART_ID_3: /* on PC6/PC7 */
-        SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R2;
+        enable_gpio_module(GPIO_PORT_C);
         GPIO_PORTC_AFSEL_R |= (1 << 7) | (1 << 6);
         GPIO_PORTA_DEN_R |= (1 << 7) | (1 << 6);
         GPIO_PORTC_PCTL_R &= ~(GPIO_PCTL_PC6_M | GPIO_PCTL_PC7_M);
-        GPIO_PORTC_PCTL_R |= GPIO_PCTL_PC6_U3RX | GPIO_PCTL_PC7_U3TX;  
+        GPIO_PORTC_PCTL_R |= GPIO_PCTL_PC6_U3RX | GPIO_PCTL_PC7_U3TX;
         break;
     case UART_ID_4: /* on PC4/PC5 */
-        SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R2;
+        enable_gpio_module(GPIO_PORT_C);
         GPIO_PORTC_AFSEL_R |= (1 << 5) | (1 << 4);
         GPIO_PORTA_DEN_R |= (1 << 5) | (1 << 4);
         GPIO_PORTC_PCTL_R &= ~(GPIO_PCTL_PC4_M | GPIO_PCTL_PC5_M);
-        GPIO_PORTC_PCTL_R |= GPIO_PCTL_PC4_U4RX | GPIO_PCTL_PC5_U4TX;  
+        GPIO_PORTC_PCTL_R |= GPIO_PCTL_PC4_U4RX | GPIO_PCTL_PC5_U4TX;
         break;
     case UART_ID_5: /* On PE4/PE5 */
-        SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R4;
+        enable_gpio_module(GPIO_PORT_E);
         GPIO_PORTE_AFSEL_R |= (1 << 5) | (1 << 4);
         GPIO_PORTA_DEN_R |= (1 << 5) | (1 << 4);
         GPIO_PORTE_PCTL_R &= ~(GPIO_PCTL_PE4_M | GPIO_PCTL_PE5_M);
-        GPIO_PORTE_PCTL_R |= GPIO_PCTL_PE4_U5RX | GPIO_PCTL_PE5_U5TX;  
+        GPIO_PORTE_PCTL_R |= GPIO_PCTL_PE4_U5RX | GPIO_PCTL_PE5_U5TX;
         break;
     case UART_ID_6: /* On PD4/PD5 */
-        SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R3;
+        enable_gpio_module(GPIO_PORT_D);
         GPIO_PORTD_AFSEL_R |= (1 << 5) | (1 << 4);
         GPIO_PORTA_DEN_R |= (1 << 5) | (1 << 4);
         GPIO_PORTD_PCTL_R &= ~(GPIO_PCTL_PD4_M | GPIO_PCTL_PD5_M);
-        GPIO_PORTD_PCTL_R |= GPIO_PCTL_PD4_U6RX | GPIO_PCTL_PD5_U6TX;  
+        GPIO_PORTD_PCTL_R |= GPIO_PCTL_PD4_U6RX | GPIO_PCTL_PD5_U6TX;
         break;
     case UART_ID_7: /* On PE0/1 */
-        SYSCTL_RCGCGPIO_R |= SYSCTL_RCGCGPIO_R4;
+        enable_gpio_module(GPIO_PORT_E);
         GPIO_PORTE_AFSEL_R |= (1 << 1) | (1 << 0);
         GPIO_PORTA_DEN_R |= (1 << 1) | (1 << 0);
         GPIO_PORTE_PCTL_R &= ~(GPIO_PCTL_PE0_M | GPIO_PCTL_PE1_M);
-        GPIO_PORTE_PCTL_R |= GPIO_PCTL_PE0_U7RX | GPIO_PCTL_PE1_U7TX;  
+        GPIO_PORTE_PCTL_R |= GPIO_PCTL_PE0_U7RX | GPIO_PCTL_PE1_U7TX;
         break;
     default:
         break;
@@ -173,7 +161,7 @@ void enable_uart(uart_id_t uart_id)
 
 void flash_error(gpio_io_pin_t pin_a, gpio_io_pin_t pin_b, unsigned int delay)
 {
-    while(1)
+    while (1)
     {
         gpio_set_output(pin_a, 1);
         gpio_set_output(pin_b, 0);
@@ -191,7 +179,8 @@ void gpio_make_output(gpio_io_pin_t pin, int level)
 {
     gpio_port_t port = GPIO_GET_PORT(pin);
     unsigned long mask = GPIO_GET_PIN(pin);
-    switch(port)
+    enable_gpio_module(port);
+    switch (port)
     {
     case GPIO_PORT_A:
         GPIO_PORTA_DEN_R |= mask;
@@ -275,7 +264,8 @@ void gpio_make_input(gpio_io_pin_t pin)
 {
     gpio_port_t port = GPIO_GET_PORT(pin);
     unsigned long mask = GPIO_GET_PIN(pin);
-    switch(port)
+    enable_gpio_module(port);
+    switch (port)
     {
     case GPIO_PORT_A:
         GPIO_PORTA_DEN_R |= mask;
@@ -320,9 +310,10 @@ void gpio_set_output(gpio_io_pin_t pin, int level)
 {
     gpio_port_t port = GPIO_GET_PORT(pin);
     unsigned long mask = GPIO_GET_PIN(pin);
+    enable_gpio_module(port);
     if (level)
     {
-        switch(port)
+        switch (port)
         {
         case GPIO_PORT_A:
             GPIO_PORTA_DATA_R |= mask;
@@ -346,7 +337,7 @@ void gpio_set_output(gpio_io_pin_t pin, int level)
     }
     else
     {
-        switch(port)
+        switch (port)
         {
         case GPIO_PORT_A:
             GPIO_PORTA_DATA_R &= ~mask;
@@ -378,7 +369,7 @@ int gpio_read_input(gpio_io_pin_t pin)
     int result = 0;
     gpio_port_t port = GPIO_GET_PORT(pin);
     unsigned long mask = GPIO_GET_PIN(pin);
-    switch(port)
+    switch (port)
     {
     case GPIO_PORT_A:
         result = (GPIO_PORTA_DATA_R & mask) ? 1 : 0;
@@ -405,6 +396,16 @@ int gpio_read_input(gpio_io_pin_t pin)
 /**************************************************
 * Private Functions
 ***************************************************/
+
+static void enable_gpio_module(gpio_port_t port)
+{
+    unsigned long mask = 1 << port;
+    if ((SYSCTL_RCGCGPIO_R & mask) == 0)
+    {
+        SYSCTL_RCGCGPIO_R |= mask;
+        busy_sleep(10);
+    }
+}
 
 /**************************************************
 * End of file

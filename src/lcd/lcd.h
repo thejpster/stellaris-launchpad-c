@@ -122,24 +122,16 @@ struct lcd_ver_t
  * /WR  = E2 (J3.08)
  * /RST = E3 (J3.09)
  *
- * DATA00 = B0 (J1.03)
- * DATA01 = B1 (J1.04)
- * DATA02 = A2 (J2.10)
+ * DATA00 = D0 (J3.03)
+ * DATA01 = D1 (J3.04)
+ * DATA02 = A2 (J2.10) // A[2:5] requires resetting from default PORTCTL 0x02 to PORTCTL 0x0
  * DATA03 = A3 (J2.09)
  * DATA04 = A4 (J2.08)
  * DATA05 = A5 (J1.08)
  * DATA06 = A6 (J1.09)
  * DATA07 = A7 (J1.10)
  *
- * In the future, I might add 16-bit mode:
- * DATA08 = F1 (J3.10)
- * DATA09 = F2 (J4.01)
- * DATA10 = F3 (J4.02)
- * DATA11 = F4 (J4.10)
- * DATA12 = C4 (J4.04)
- * DATA13 = C5 (J4.05)
- * DATA14 = C6 (J4.06)
- * DATA15 = C7 (J4.07)
+ * In the future, I might add 16-bit mode.
  *
  */
 extern int lcd_init(void);

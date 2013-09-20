@@ -45,6 +45,11 @@
 * implementation, this is about 0.5 seconds */
 #define DELAY (CLOCK_RATE / 32)
 
+#define IN_0 GPIO_MAKE_IO_PIN(GPIO_PORT_D, 6)
+#define IN_1 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 0)
+#define IN_2 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 4)
+#define OUT_0 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 5)
+
 /**************************************************
 * Data Types
 **************************************************/
@@ -83,7 +88,7 @@ int main(void)
     struct lcd_ver_t ver;
     struct lcd_mode_t mode;
 
-    /* Set system clock to 16MHz */
+    /* Set system clock to CLOCK_RATE */
     set_clock();
 
     enable_peripherals();
@@ -102,6 +107,11 @@ int main(void)
         /* Warn user UART failed to init */
         flash_error(LED_RED, LED_GREEN, DELAY / 4);
     }
+
+    gpio_make_input(IN_0);
+    gpio_make_input(IN_1);
+    gpio_make_input(IN_2);
+    gpio_make_output(OUT_0, 0);
 
     lcd_init();
 
@@ -137,6 +147,11 @@ int main(void)
     {
         busy_sleep(DELAY);
 
+        iprintf("in_0=%d, in_1=%d, in_2=%d\n",
+            gpio_read_input(IN_0),
+            gpio_read_input(IN_1),
+            gpio_read_input(IN_2));
+
         gpio_set_output(LED_RED, 1);
         gpio_set_output(LED_BLUE, 0);
         gpio_set_output(LED_GREEN, 0);
@@ -147,7 +162,7 @@ int main(void)
          */
 
         lcd_paint_clear_rectangle(0, 0, 479, 271);
-        lcd_paint_fill_rectangle(MAKE_COLOUR(0xFF, 0x00, 0x00), 0, 0, 100, 100);
+        lcd_paint_fill_rectangle(MAKE_COLOUR(0xFF, 0x00, 0x00), 0, 100, 0, 100);
 
         busy_sleep(DELAY);
 
@@ -156,7 +171,7 @@ int main(void)
         gpio_set_output(LED_GREEN, 1);
 
         lcd_paint_clear_rectangle(0, 0, 479, 271);
-        lcd_paint_fill_rectangle(MAKE_COLOUR(0x00, 0xFF, 0x00), 100, 0, 200, 100);
+        lcd_paint_fill_rectangle(MAKE_COLOUR(0x00, 0xFF, 0x00), 100, 200, 0, 100);
 
         busy_sleep(DELAY);
 
