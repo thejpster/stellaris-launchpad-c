@@ -1,8 +1,8 @@
 /*****************************************************
 *
-* Stellaris Launchpad Example Project
+* Stellaris Launchpad "Lexgo Bonus" TFT dash project
 *
-* Copyright (c) 2012 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2013 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -22,6 +22,27 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
+*
+* DESCRIPTION
+*
+* This is the main module for the Lexgo Bonus TFT dashboard. There is a 4.3"
+* TFT connected displaying current speed and trip/odometer readings. A 12v
+* input connected to a button on the dash allows the driver to cycle through
+* various modes (as yet undefined). In addition to the speed signal (12v
+* square wave) there is also a tacho input (again, 12v square wave), the
+* frequency of which is measured and trimmed by a specified factor to produce
+* a tacho output (12v square wave) for the rev counter. This allows us to
+* compensate for changes in wheel size, diff, gearbox, etc.
+*
+* We create a free-running timer, the value of which is read whenever IN_0 and
+* IN_1 change. This gives is the frequency of these two inputs.
+*
+* IN_2 is a button input which will need de-bouncing in some fashion.
+*
+* OUT_0 is the tacho output, driven from a second timer. As we haven't
+* connected the output to a PWM pin, we'll simply have to set the pin in a
+* timer interrupt.
+* 
 *****************************************************/
 
 /**************************************************
@@ -45,10 +66,10 @@
 * implementation, this is about 0.5 seconds */
 #define DELAY (CLOCK_RATE / 32)
 
-#define IN_0 GPIO_MAKE_IO_PIN(GPIO_PORT_D, 6)
-#define IN_1 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 0)
-#define IN_2 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 4)
-#define OUT_0 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 5)
+#define IN_0 GPIO_MAKE_IO_PIN(GPIO_PORT_D, 6) /* Speed input */
+#define IN_1 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 0) /* Tacho input */
+#define IN_2 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 4) /* Button input */
+#define OUT_0 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 5) /* Tacho output */
 
 /**************************************************
 * Data Types
