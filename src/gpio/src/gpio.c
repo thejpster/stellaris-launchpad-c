@@ -178,7 +178,7 @@ void flash_error(gpio_io_pin_t pin_a, gpio_io_pin_t pin_b, unsigned int delay)
 void gpio_make_output(gpio_io_pin_t pin, int level)
 {
     gpio_port_t port = GPIO_GET_PORT(pin);
-    unsigned long mask = GPIO_GET_PIN(pin);
+    reg_t mask = GPIO_GET_PIN(pin);
     enable_gpio_module(port);
     switch (port)
     {
@@ -263,7 +263,7 @@ void gpio_make_output(gpio_io_pin_t pin, int level)
 void gpio_make_input(gpio_io_pin_t pin)
 {
     gpio_port_t port = GPIO_GET_PORT(pin);
-    unsigned long mask = GPIO_GET_PIN(pin);
+    reg_t mask = GPIO_GET_PIN(pin);
     enable_gpio_module(port);
     switch (port)
     {
@@ -309,7 +309,7 @@ void gpio_make_input(gpio_io_pin_t pin)
 void gpio_set_output(gpio_io_pin_t pin, int level)
 {
     gpio_port_t port = GPIO_GET_PORT(pin);
-    unsigned long mask = GPIO_GET_PIN(pin);
+    reg_t mask = GPIO_GET_PIN(pin);
     enable_gpio_module(port);
     if (level)
     {
@@ -368,7 +368,7 @@ int gpio_read_input(gpio_io_pin_t pin)
 {
     int result = 0;
     gpio_port_t port = GPIO_GET_PORT(pin);
-    unsigned long mask = GPIO_GET_PIN(pin);
+    reg_t mask = GPIO_GET_PIN(pin);
     switch (port)
     {
     case GPIO_PORT_A:
@@ -399,7 +399,7 @@ int gpio_read_input(gpio_io_pin_t pin)
 
 static void enable_gpio_module(gpio_port_t port)
 {
-    unsigned long mask = 1 << port;
+    reg_t mask = 1 << port;
     if ((SYSCTL_RCGCGPIO_R & mask) == 0)
     {
         SYSCTL_RCGCGPIO_R |= mask;

@@ -36,6 +36,7 @@
 ***************************************************/
 
 #include <stddef.h>
+#include <stdint.h>
 #include <string.h>
 
 #include "misc/misc.h"
@@ -59,22 +60,22 @@ static void uart_irq(uart_id_t uart_id);
 
 typedef struct uart_register_map_t
 {
-    volatile unsigned long DR_R;             /* 0x4xxxx000 */
-    volatile unsigned long RSR_R;            /* 0x4xxxx004 */
-    volatile unsigned long padding0[4];      /* 0x4xxxx008, 00C, 010, 014 */
-    volatile unsigned long FR_R;             /* 0x4xxxx018 */
-    volatile unsigned long padding1[1];      /* 0x4xxxx01C */
-    volatile unsigned long ILPR_R;           /* 0x4xxxx020 */
-    volatile unsigned long IBRD_R;           /* 0x4xxxx024 */
-    volatile unsigned long FBRD_R;           /* 0x4xxxx028 */
-    volatile unsigned long LCRH_R;           /* 0x4xxxx02C */
-    volatile unsigned long CTL_R;            /* 0x4xxxx030 */
-    volatile unsigned long IFLS_R;           /* 0x4xxxx034 */
-    volatile unsigned long IM_R;             /* 0x4xxxx038 */
-    volatile unsigned long RIS_R;            /* 0x4xxxx03C */
-    volatile unsigned long MIS_R;            /* 0x4xxxx040 */
-    volatile unsigned long ICR_R;            /* 0x4xxxx044 */
-    volatile unsigned long DMACTL_R;         /* 0x4xxxx048 */
+    reg_t DR_R;             /* 0x4xxxx000 */
+    reg_t RSR_R;            /* 0x4xxxx004 */
+    reg_t padding0[4];      /* 0x4xxxx008, 00C, 010, 014 */
+    reg_t FR_R;             /* 0x4xxxx018 */
+    reg_t padding1[1];      /* 0x4xxxx01C */
+    reg_t ILPR_R;           /* 0x4xxxx020 */
+    reg_t IBRD_R;           /* 0x4xxxx024 */
+    reg_t FBRD_R;           /* 0x4xxxx028 */
+    reg_t LCRH_R;           /* 0x4xxxx02C */
+    reg_t CTL_R;            /* 0x4xxxx030 */
+    reg_t IFLS_R;           /* 0x4xxxx034 */
+    reg_t IM_R;             /* 0x4xxxx038 */
+    reg_t RIS_R;            /* 0x4xxxx03C */
+    reg_t MIS_R;            /* 0x4xxxx040 */
+    reg_t ICR_R;            /* 0x4xxxx044 */
+    reg_t DMACTL_R;         /* 0x4xxxx048 */
 } uart_register_map_t;
 
 /**************************************************
@@ -155,14 +156,14 @@ int uart_init(
 
     /* baud_div = CLOCK_RATE / (16 * baud_rate); */
     /* baud_int = round(baud_div * 64) */
-    unsigned int baud_int = (((CLOCK_RATE * 8) / baud_rate) + 1) / 2;
+    uint32_t baud_int = (((CLOCK_RATE * 8) / baud_rate) + 1) / 2;
 
     /* Store the upper and lower parts of the divider */
     uart_base[uart_id]->IBRD_R = baud_int / 64;
     uart_base[uart_id]->FBRD_R = baud_int % 64;
 
     /* Calculate the UART Line Control register value */
-    unsigned long ctrl = UART_LCRH_FEN;
+    reg_t ctrl = UART_LCRH_FEN;
 
     switch(parity)
     {

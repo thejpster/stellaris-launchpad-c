@@ -85,7 +85,7 @@ void set_clock(void)
      *
      * The register we need to set is the Run-time Clock Config register (RCC).
      */
-    unsigned long rcc = SYSCTL_RCC_R;
+    reg_t rcc = SYSCTL_RCC_R;
     // RCC SYSDIV field = 0x0
     CLEAR_BITS(rcc, SYSCTL_RCC_SYSDIV_M);
     // XTAL field = 0x15 (=> 16MHz)
@@ -144,7 +144,7 @@ void set_clock(void)
 /**
  * Rough and ready sleep function.
  */
-void busy_sleep(unsigned long delay)
+void busy_sleep(uint32_t delay)
 {
     while(delay--)
     {
@@ -157,7 +157,7 @@ void busy_sleep(unsigned long delay)
  * Writing a 0 to the enable register has no
  * effect so we don't need to do read-modify-write.
  */
-void enable_interrupt(int interrupt_id)
+void enable_interrupt(unsigned int interrupt_id)
 {
     int register_bank = interrupt_id / 32;
     int bit_field = 1 << (interrupt_id % 32);
@@ -189,7 +189,7 @@ void enable_interrupt(int interrupt_id)
  * Writing a 0 to the disable register has no
  * effect so we don't need to do read-modify-write.
  */
-void disable_interrupt(int interrupt_id)
+void disable_interrupt(unsigned int interrupt_id)
 {
     int register_bank = interrupt_id / 32;
     int bit_field = 1 << (interrupt_id % 32);

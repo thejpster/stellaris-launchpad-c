@@ -43,6 +43,9 @@
 * connected the output to a PWM pin, we'll simply have to set the pin in a
 * timer interrupt.
 * 
+* My first-draft guess is that there will be around 14.6ms per speedo
+* pulse at 60 mph.
+*
 *****************************************************/
 
 /**************************************************
@@ -57,6 +60,7 @@
 #include "uart/uart.h"
 #include "gpio/gpio.h"
 #include "lcd/lcd.h"
+#include "timers/timers.h"
 
 /**************************************************
 * Defines
@@ -97,7 +101,13 @@ static void uart_chars_received(
 * Private Data
 **************************************************/
 
-/* None */
+static const timer_config_t timer_0_config = {
+    .type = TIMER_SPLIT,
+    .timer_a = {
+        .type = TIMER_SPLIT_PERIODIC,
+        .count_up = false
+    }
+};
 
 /**************************************************
 * Public Functions
@@ -138,20 +148,20 @@ int main(void)
 
     lcd_get_version(&ver);
 
-    iprintf("Supplier=0x%04x, Product=0x%02x, Rev=0x%02x\n", ver.supplier_id, ver.product_id, ver.revision);
+    printf("Supplier=0x%04x, Product=0x%02x, Rev=0x%02x\n", ver.supplier_id, ver.product_id, ver.revision);
 
     lcd_get_mode(&mode);
 
-    iprintf("colour_enhancement=%c\n", mode.colour_enhancement ? 'Y' : 'N');
-    iprintf("frc=%c\n", mode.frc ? 'Y' : 'N');
-    iprintf("lshift_rising_edge=%c\n", mode.lshift_rising_edge ? 'Y' : 'N');
-    iprintf("horiz_active_high=%c\n", mode.horiz_active_high ? 'Y' : 'N');
-    iprintf("vert_active_high=%c\n", mode.vert_active_high ? 'Y' : 'N');
-    iprintf("tft_type=%x\n", mode.tft_type);
-    iprintf("horiz_pixels=%u\n", mode.horiz_pixels);
-    iprintf("vert_pixels=%u\n", mode.vert_pixels);
-    iprintf("even_sequence=%x\n", mode.even_sequence);
-    iprintf("odd_sequence=%x\n", mode.odd_sequence);
+    printf("colour_enhancement=%c\n", mode.colour_enhancement ? 'Y' : 'N');
+    printf("frc=%c\n", mode.frc ? 'Y' : 'N');
+    printf("lshift_rising_edge=%c\n", mode.lshift_rising_edge ? 'Y' : 'N');
+    printf("horiz_active_high=%c\n", mode.horiz_active_high ? 'Y' : 'N');
+    printf("vert_active_high=%c\n", mode.vert_active_high ? 'Y' : 'N');
+    printf("tft_type=%x\n", mode.tft_type);
+    printf("horiz_pixels=%u\n", mode.horiz_pixels);
+    printf("vert_pixels=%u\n", mode.vert_pixels);
+    printf("even_sequence=%x\n", mode.even_sequence);
+    printf("odd_sequence=%x\n", mode.odd_sequence);
 
     pixel_width = lcd_get_pixel_width();
 
@@ -164,44 +174,76 @@ int main(void)
         printf("Pixel width is now %d (should be 8!)\n", pixel_width);
     }
 
+    timer_configure(TIMER_0, &timer_0_config);
+    timer_enable(TIMER_0, TIMER_A);
+
     while (1)
     {
         busy_sleep(DELAY);
 
-        iprintf("in_0=%d, in_1=%d, in_2=%d\n",
+        printf("in_0=%d, in_1=%d, in_2=%d\n",
             gpio_read_input(IN_0),
             gpio_read_input(IN_1),
             gpio_read_input(IN_2));
 
+        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+
         gpio_set_output(LED_RED, 1);
         gpio_set_output(LED_BLUE, 0);
         gpio_set_output(LED_GREEN, 0);
+
+        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
 
         /*
          * We should see RED square (top left), BLUE square (top right), GREEN
          * square (down left), in time with the RGB led.
          */
 
+        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+
         lcd_paint_clear_rectangle(0, 0, 479, 271);
+
+        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+
         lcd_paint_fill_rectangle(MAKE_COLOUR(0xFF, 0x00, 0x00), 0, 100, 0, 100);
 
+        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+
         busy_sleep(DELAY);
+
+        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
 
         gpio_set_output(LED_RED, 0);
         gpio_set_output(LED_BLUE, 0);
         gpio_set_output(LED_GREEN, 1);
 
+        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+
         lcd_paint_clear_rectangle(0, 0, 479, 271);
+
+        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+
         lcd_paint_fill_rectangle(MAKE_COLOUR(0x00, 0xFF, 0x00), 100, 200, 0, 100);
 
+        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+
         busy_sleep(DELAY);
+
+        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
 
         gpio_set_output(LED_RED, 0);
         gpio_set_output(LED_BLUE, 1);
         gpio_set_output(LED_GREEN, 0);
 
+        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+
         lcd_paint_clear_rectangle(0, 0, 479, 271);
+
+        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+
         lcd_paint_fill_rectangle(MAKE_COLOUR(0x00, 0x00, 0xFF), 0, 100, 100, 200);
+
+        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
     }
 
     /* Shouldn't get here */

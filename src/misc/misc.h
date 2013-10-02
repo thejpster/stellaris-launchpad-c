@@ -39,6 +39,7 @@ extern "C" {
 * Includes
 ***************************************************/
 
+#include <stdint.h>
 #include "misc/lm4f120h5qr.h"
 
 /**************************************************
@@ -51,11 +52,13 @@ extern "C" {
 
 #define SET_BITS(reg, bits) do { reg |= (bits); } while (0)
 
+#define printf iprintf
+
 /**************************************************
 * Public Data Types
 **************************************************/
 
-/* None */
+typedef volatile unsigned long reg_t;
 
 /**************************************************
 * Public Data
@@ -75,17 +78,17 @@ extern void set_clock(void);
 /**
  * Rough and ready sleep function.
  */
-extern void busy_sleep(unsigned long delay);
+extern void busy_sleep(uint32_t delay);
 
 /**
  * Enable an interrupt. See table 2-9 in [1].
  */
-extern void enable_interrupt(int interrupt_id);
+extern void enable_interrupt(unsigned int interrupt_id);
 
 /**
  * Disable an interrupt. See table 2-9 in [1].
  */
-extern void disable_interrupt(int interrupt_id);
+extern void disable_interrupt(unsigned int interrupt_id);
 
 #ifdef __cplusplus
 }
