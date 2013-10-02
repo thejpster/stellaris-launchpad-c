@@ -276,6 +276,12 @@ void rst_handler(void)
     // to start the main() method!
     // There you go!
     main();
+
+    /* Oops! You fell off the end of main. */
+    while(1)
+    {
+        /* Spin */
+    }
 }
 
 // NMI Exception handler code NVIC 2
@@ -284,7 +290,7 @@ void nmi_handler(void)
     // Just loop forever, so if you want to debug the processor it's running.
     while (1)
     {
-        flash_error(LED_BLUE, LED_GREEN, CLOCK_RATE);
+        flash_error(LED_BLUE, LED_GREEN, CLOCK_RATE / 16);
     }
 }
 
@@ -294,7 +300,7 @@ void hardfault_handler(void)
     // Just loop forever, so if you want to debug the processor it's running.
     while (1)
     {
-        flash_error(LED_BLUE, LED_RED, CLOCK_RATE);
+        flash_error(LED_BLUE, LED_RED, CLOCK_RATE / 16);
     }
 }
 
@@ -304,6 +310,6 @@ void empty_def_handler(void)
     // Just loop forever, so if you want to debug the processor it's running.
     while (1)
     {
-        flash_error(LED_GREEN, LED_RED, CLOCK_RATE);
+        flash_error(LED_GREEN, LED_RED, CLOCK_RATE / 16);
     }
 }

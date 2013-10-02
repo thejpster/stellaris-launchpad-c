@@ -86,6 +86,7 @@ sources = [
     'misc/src/startup.c',
     'misc/src/misc.c',
     'misc/src/libc.c',
+    'timers/src/timers.c',
     'gpio/src/gpio.c',
     'uart/src/uart.c',
 ]

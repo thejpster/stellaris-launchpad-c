@@ -2,7 +2,7 @@
 *
 * Stellaris Launchpad Example Project
 *
-* Copyright (c) 2012 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2013 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -35,6 +35,7 @@
 #include "misc/misc.h"
 #include "uart/uart.h"
 #include "gpio/gpio.h"
+#include "timers/timers.h"
 
 /**************************************************
 * Defines
@@ -75,6 +76,14 @@ static void uart_chars_received(
 * Private Data
 **************************************************/
 
+static const timer_config_t timer_0_config = {
+    .type = TIMER_SPLIT,
+    .timer_a = {
+        .type = TIMER_SPLIT_PERIODIC,
+        .count_up = false
+    }
+};
+
 static button_uart_override_t g_override = BUTTON_UART_OVERRIDE_NONE;
 
 /**************************************************
@@ -85,10 +94,13 @@ int main(void)
 {
     button_uart_override_t override = g_override;
 
-    /* Set system clock to 16MHz */
+    /* Set system clock to CLOCK_RATE */
     set_clock();
 
     enable_peripherals();
+
+    timer_configure(TIMER_0, &timer_0_config);
+    timer_enable(TIMER_0, TIMER_A);
 
     int res = uart_init(
                   UART_ID_0,
@@ -114,7 +126,10 @@ int main(void)
         gpio_set_output(LED_BLUE, 0);
         gpio_set_output(LED_RED, 0);
         gpio_set_output(LED_GREEN, 0);
+
         busy_sleep(DELAY);
+
+        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
 
         if (override != g_override)
         {
@@ -159,6 +174,7 @@ int main(void)
         }
 
         busy_sleep(DELAY);
+
     }
 
     /* Shouldn't get here */
