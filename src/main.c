@@ -42,7 +42,7 @@
 * OUT_0 is the tacho output, driven from a second timer. As we haven't
 * connected the output to a PWM pin, we'll simply have to set the pin in a
 * timer interrupt.
-* 
+*
 * My first-draft guess is that there will be around 14.6ms per speedo
 * pulse at 60 mph.
 *
@@ -66,9 +66,7 @@
 * Defines
 ***************************************************/
 
-/* So we can see the LEDs flashing. Given our busy_sleep
-* implementation, this is about 0.5 seconds */
-#define DELAY (CLOCK_RATE / 32)
+#define DELAY (CLOCK_RATE / 64)
 
 #define IN_0 GPIO_MAKE_IO_PIN(GPIO_PORT_D, 6) /* Speed input */
 #define IN_1 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 0) /* Tacho input */
@@ -87,9 +85,18 @@
 
 static void uart_chars_received(
     uart_id_t uart_id,
-    const char *buffer,
+    const char* buffer,
     size_t buffer_size
 );
+
+static void timer_interrupt(
+    timer_module_t timer,
+    timer_ab_t ab,
+    void* p_context,
+    uint32_t n_context
+);
+
+static uint32_t get_overflow(void);
 
 /**************************************************
 * Public Data
@@ -101,13 +108,16 @@ static void uart_chars_received(
 * Private Data
 **************************************************/
 
-static const timer_config_t timer_0_config = {
-    .type = TIMER_SPLIT,
+static const timer_config_t timer_0_config =
+{
+    .type = TIMER_JOINED,
     .timer_a = {
         .type = TIMER_SPLIT_PERIODIC,
-        .count_up = false
+        .count_up = true
     }
 };
+
+static volatile uint32_t overflow_count;
 
 /**************************************************
 * Public Functions
@@ -175,6 +185,11 @@ int main(void)
     }
 
     timer_configure(TIMER_0, &timer_0_config);
+    timer_register_handler(TIMER_0, TIMER_A, timer_interrupt, NULL, 0);
+    timer_set_interval_load(TIMER_0, TIMER_A, 1<<24); /* 2**24 / 66.67MHz = 0.25 secs */
+    /* We as increment the overflow counter (a uint32_t) every 250 ms or so,
+     * the overflow counter will itself overflow after 34 years of continuous running */
+    timer_interrupt_enable(TIMER_0, TIMER_A_INTERRUPT_TIMEOUT);
     timer_enable(TIMER_0, TIMER_A);
 
     while (1)
@@ -182,68 +197,68 @@ int main(void)
         busy_sleep(DELAY);
 
         printf("in_0=%d, in_1=%d, in_2=%d\n",
-            gpio_read_input(IN_0),
-            gpio_read_input(IN_1),
-            gpio_read_input(IN_2));
+               gpio_read_input(IN_0),
+               gpio_read_input(IN_1),
+               gpio_read_input(IN_2));
 
-        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+        printf("timer0 = 0x%08lx%06lx\n", get_overflow(), timer_get_value(TIMER_0, TIMER_A));
 
         gpio_set_output(LED_RED, 1);
         gpio_set_output(LED_BLUE, 0);
         gpio_set_output(LED_GREEN, 0);
 
-        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+        printf("timer0 = 0x%08lx%06lx\n", get_overflow(), timer_get_value(TIMER_0, TIMER_A));
 
         /*
          * We should see RED square (top left), BLUE square (top right), GREEN
          * square (down left), in time with the RGB led.
          */
 
-        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+        printf("timer0 = 0x%08lx%06lx\n", get_overflow(), timer_get_value(TIMER_0, TIMER_A));
 
         lcd_paint_clear_rectangle(0, 0, 479, 271);
 
-        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+        printf("timer0 = 0x%08lx%06lx\n", get_overflow(), timer_get_value(TIMER_0, TIMER_A));
 
         lcd_paint_fill_rectangle(MAKE_COLOUR(0xFF, 0x00, 0x00), 0, 100, 0, 100);
 
-        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+        printf("timer0 = 0x%08lx%06lx\n", get_overflow(), timer_get_value(TIMER_0, TIMER_A));
 
         busy_sleep(DELAY);
 
-        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+        printf("timer0 = 0x%08lx%06lx\n", get_overflow(), timer_get_value(TIMER_0, TIMER_A));
 
         gpio_set_output(LED_RED, 0);
         gpio_set_output(LED_BLUE, 0);
         gpio_set_output(LED_GREEN, 1);
 
-        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+        printf("timer0 = 0x%08lx%06lx\n", get_overflow(), timer_get_value(TIMER_0, TIMER_A));
 
         lcd_paint_clear_rectangle(0, 0, 479, 271);
 
-        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+        printf("timer0 = 0x%08lx%06lx\n", get_overflow(), timer_get_value(TIMER_0, TIMER_A));
 
         lcd_paint_fill_rectangle(MAKE_COLOUR(0x00, 0xFF, 0x00), 100, 200, 0, 100);
 
-        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+        printf("timer0 = 0x%08lx%06lx\n", get_overflow(), timer_get_value(TIMER_0, TIMER_A));
 
         busy_sleep(DELAY);
 
-        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+        printf("timer0 = 0x%08lx%06lx\n", get_overflow(), timer_get_value(TIMER_0, TIMER_A));
 
         gpio_set_output(LED_RED, 0);
         gpio_set_output(LED_BLUE, 1);
         gpio_set_output(LED_GREEN, 0);
 
-        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+        printf("timer0 = 0x%08lx%06lx\n", get_overflow(), timer_get_value(TIMER_0, TIMER_A));
 
         lcd_paint_clear_rectangle(0, 0, 479, 271);
 
-        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+        printf("timer0 = 0x%08lx%06lx\n", get_overflow(), timer_get_value(TIMER_0, TIMER_A));
 
         lcd_paint_fill_rectangle(MAKE_COLOUR(0x00, 0x00, 0xFF), 0, 100, 100, 200);
 
-        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+        printf("timer0 = 0x%08lx%06lx\n", get_overflow(), timer_get_value(TIMER_0, TIMER_A));
     }
 
     /* Shouldn't get here */
@@ -255,9 +270,9 @@ int main(void)
 * Private Functions
 ***************************************************/
 
-void uart_chars_received(
+static void uart_chars_received(
     uart_id_t uart_id,
-    const char *buffer,
+    const char* buffer,
     size_t buffer_size
 )
 {
@@ -273,6 +288,26 @@ void uart_chars_received(
         (void) c;
 
     }
+}
+
+static void timer_interrupt(
+    timer_module_t timer,
+    timer_ab_t ab,
+    void* p_context,
+    uint32_t n_context
+)
+{
+    overflow_count++;
+    timer_interrupt_clear(TIMER_0, TIMER_A_INTERRUPT_TIMEOUT);
+}
+
+static uint32_t get_overflow(void)
+{
+    uint32_t res;
+    disable_interrupts();
+    res = overflow_count;
+    enable_interrupts();
+    return res;
 }
 
 /**************************************************

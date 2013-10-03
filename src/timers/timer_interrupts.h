@@ -2,7 +2,7 @@
 *
 * Stellaris Launchpad Example Project
 *
-* Copyright (c) 2012 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2013 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -22,14 +22,13 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
-* References:
+* This module handles the various counter/timer peripherals
+* in the LM4F.
 *
-*     [1] - Stellaris® LM4F121H5QR Microcontroller
-*           Data Sheet
 *****************************************************/
 
-#ifndef MISC_MISC_H_
-#define MISC_MISC_H_
+#ifndef TIMER_INTERRUPTS_H_
+#define TIMER_INTERRUPTS_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,26 +38,19 @@ extern "C" {
 * Includes
 ***************************************************/
 
-#include <stdint.h>
-#include "misc/lm4f120h5qr.h"
+/* None */
 
 /**************************************************
 * Public Defines
 ***************************************************/
 
-#define NUMELTS(x) ( sizeof(x) / sizeof((x)[0]) )
-
-#define CLEAR_BITS(reg, bits) do { reg &= ~(bits); } while (0)
-
-#define SET_BITS(reg, bits) do { reg |= (bits); } while (0)
-
-#define printf iprintf
+/* None */
 
 /**************************************************
 * Public Data Types
 **************************************************/
 
-typedef volatile unsigned long reg_t;
+/* None */
 
 /**************************************************
 * Public Data
@@ -69,45 +61,36 @@ typedef volatile unsigned long reg_t;
 /**************************************************
 * Public Function Prototypes
 ***************************************************/
-
-/**
- * Set system clock to a CLOCK_RATE
- */
-extern void set_clock(void);
-
-/**
- * Rough and ready sleep function.
- */
-extern void busy_sleep(uint32_t delay);
-
-/**
- * Enable an interrupt. See table 2-9 in [1].
- */
-extern void enable_interrupt(unsigned int interrupt_id);
-
-/**
- * Disable an interrupt. See table 2-9 in [1].
- */
-extern void disable_interrupt(unsigned int interrupt_id);
-
-/*
- * Disable all interrupts.
- *
- * Use this to create interrupt-safe critical sections. Disable interrupts for only
- * the shortest possible period of time.
- */
-#define disable_interrupts() __asm("cpsid i")
-
-/*
- * Enable interrupts again.
- */
-#define enable_interrupts() __asm("cpsie i")
+extern void timer_0a_interrupt(void);
+extern void timer_1a_interrupt(void);
+extern void timer_2a_interrupt(void);
+extern void timer_3a_interrupt(void);
+extern void timer_4a_interrupt(void);
+extern void timer_5a_interrupt(void);
+extern void timer_0b_interrupt(void);
+extern void timer_1b_interrupt(void);
+extern void timer_2b_interrupt(void);
+extern void timer_3b_interrupt(void);
+extern void timer_4b_interrupt(void);
+extern void timer_5b_interrupt(void);
+extern void timer_w0a_interrupt(void);
+extern void timer_w1a_interrupt(void);
+extern void timer_w2a_interrupt(void);
+extern void timer_w3a_interrupt(void);
+extern void timer_w4a_interrupt(void);
+extern void timer_w5a_interrupt(void);
+extern void timer_w0b_interrupt(void);
+extern void timer_w1b_interrupt(void);
+extern void timer_w2b_interrupt(void);
+extern void timer_w3b_interrupt(void);
+extern void timer_w4b_interrupt(void);
+extern void timer_w5b_interrupt(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* ndef MISC_MISC_H_ */
+#endif /* ndef TIMER_INTERRUPTS_H_ */
 
 /**************************************************
 * End of file

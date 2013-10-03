@@ -2,7 +2,10 @@
 *
 * Stellaris Launchpad Example Project
 *
-* Copyright (c) 2012 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2013 theJPster (www.thejpster.org.uk)
+*
+* This module handles the various counter/timer peripherals
+* in the LM4F.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -22,10 +25,11 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
+* References:
 *
-* This module handles the various counter/timer peripherals
-* in the LM4F.
-*
+*     [1] - Stellaris® LM4F121H5QR Microcontroller
+*           Data Sheet.
+*           http://www.ti.com/lit/ds/symlink/lm4f120h5qr.pdf
 *****************************************************/
 
 /**************************************************
@@ -80,11 +84,18 @@ typedef struct timer_registers_t
     const reg_t TBPV;
 } timer_registers_t;
 
+typedef struct timer_interrupt_list_t
+{
+    timer_interrupt_handler_t handler_fn;
+    uint32_t n_context;
+    void *p_context;
+} timer_interrupt_list_t;
+
 /**************************************************
 * Function Prototypes
 **************************************************/
 
-/* None */
+static void handle_interrupt(timer_module_t timer, timer_ab_t ab);
 
 /**************************************************
 * Public Data
@@ -95,6 +106,8 @@ typedef struct timer_registers_t
 /**************************************************
 * Private Data
 **************************************************/
+
+static timer_interrupt_list_t interrupt_handlers[TIMER_NUM_TIMERS][2];
 
 static timer_registers_t *const timers[TIMER_NUM_TIMERS] =
 {
@@ -112,6 +125,23 @@ static timer_registers_t *const timers[TIMER_NUM_TIMERS] =
     (timer_registers_t *) &WTIMER5_CFG_R
 };
 
+/* See table 2-9 in [1] */
+static const int timer_int_map[TIMER_NUM_TIMERS][2] =
+{
+    { 19, 20 },
+    { 21, 22 },
+    { 23, 24 },
+    { 35, 36 },
+    { 70, 71 },
+    { 92, 93 },
+    { 94, 95 },
+    { 96, 97 },
+    { 98, 99 },
+    { 100, 101 },
+    { 102, 103 },
+    { 104, 105 }    
+};
+
 /**************************************************
 * Public Functions
 ***************************************************/
@@ -126,7 +156,7 @@ void timer_configure(timer_module_t timer, const timer_config_t *p_config)
 {
     timer_registers_t *p_timer = timers[timer];
 
-    switch(timer)
+    switch (timer)
     {
     case TIMER_0:
         SYSCTL_RCGCTIMER_R = SYSCTL_RCGCTIMER_R0;
@@ -419,6 +449,29 @@ void timer_interrupt_disable(timer_module_t timer, timer_interrupt_t interrupt)
 }
 
 /*
+ * Register a function to be called when an interrupt fires. There is one interrupt per timer,
+ * so the handler will need to check what caused the interrupt if multiple interrupts have been enabled.
+ *
+ * @param timer - A timer module (e.g. TIMER_0)
+ * @param ab - Select timer A or timer B.
+ * @param handler - A function to call (in interrupt context)
+ * @param p_context - A pointer argument supplied to the handler
+ * @param n_context - An integer argument supplied to the handler
+ */
+void timer_register_handler(
+    timer_module_t timer,
+    timer_ab_t ab,
+    timer_interrupt_handler_t handler,
+    void *p_context, uint32_t n_context)
+{
+    timer_interrupt_list_t *p = &interrupt_handlers[timer][ab];
+    p->handler_fn = handler;
+    p->p_context = p_context;
+    p->n_context = n_context;
+    enable_interrupt(timer_int_map[timer][ab]);
+}
+
+/*
  * Check if an interrupt event has actually occured.
  *
  * @param timer - A timer module (e.g. TIMER_0)
@@ -594,7 +647,7 @@ uint16_t timer_get_prescale_match(timer_module_t timer, timer_ab_t ab)
     }
 }
 
-/* 
+/*
  * Prescale allows you to extend a split timer by 16 bits. This sets the 16
  * bits that go with timer_set_match().
  *
@@ -722,11 +775,138 @@ uint16_t timer_get_prescale_value(timer_module_t timer, timer_ab_t ab)
     }
 }
 
+void timer_0a_interrupt(void)
+{
+    handle_interrupt(TIMER_0, TIMER_A);
+}
+
+void timer_1a_interrupt(void)
+{
+    handle_interrupt(TIMER_1, TIMER_A);
+}
+
+void timer_2a_interrupt(void)
+{
+    handle_interrupt(TIMER_2, TIMER_A);
+}
+
+void timer_3a_interrupt(void)
+{
+    handle_interrupt(TIMER_3, TIMER_A);
+}
+
+void timer_4a_interrupt(void)
+{
+    handle_interrupt(TIMER_4, TIMER_A);
+}
+
+void timer_5a_interrupt(void)
+{
+    handle_interrupt(TIMER_5, TIMER_A);
+}
+
+void timer_0b_interrupt(void)
+{
+    handle_interrupt(TIMER_0, TIMER_B);
+}
+
+void timer_1b_interrupt(void)
+{
+    handle_interrupt(TIMER_1, TIMER_B);
+}
+
+void timer_2b_interrupt(void)
+{
+    handle_interrupt(TIMER_2, TIMER_B);
+}
+
+void timer_3b_interrupt(void)
+{
+    handle_interrupt(TIMER_3, TIMER_B);
+}
+
+void timer_4b_interrupt(void)
+{
+    handle_interrupt(TIMER_4, TIMER_B);
+}
+
+void timer_5b_interrupt(void)
+{
+    handle_interrupt(TIMER_5, TIMER_B);
+}
+
+void timer_w0a_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_0, TIMER_A);
+}
+
+void timer_w1a_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_1, TIMER_A);
+}
+
+void timer_w2a_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_2, TIMER_A);
+}
+
+void timer_w3a_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_3, TIMER_A);
+}
+
+void timer_w4a_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_4, TIMER_A);
+}
+
+void timer_w5a_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_5, TIMER_A);
+}
+
+void timer_w0b_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_0, TIMER_B);
+}
+
+void timer_w1b_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_1, TIMER_B);
+}
+
+void timer_w2b_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_2, TIMER_B);
+}
+
+void timer_w3b_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_3, TIMER_B);
+}
+
+void timer_w4b_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_4, TIMER_B);
+}
+
+void timer_w5b_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_5, TIMER_B);
+}
+
 /**************************************************
 * Private Functions
 ***************************************************/
 
-/* None */
+static void handle_interrupt(timer_module_t timer, timer_ab_t ab)
+{
+    timer_interrupt_list_t *p = &interrupt_handlers[timer][ab];
+    if (p->handler_fn)
+    {
+        p->handler_fn(timer, ab, p->p_context, p->n_context);
+    }
+}
 
 /**************************************************
 * End of file

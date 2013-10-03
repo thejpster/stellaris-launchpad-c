@@ -36,7 +36,7 @@ FLASH_TOOL = "sudo ./lm4tools/lm4flash/lm4flash"
 # If you have installed the toolchain from https://launchpad.net/gcc-arm-embedded,
 # edit this to point to your gcc. This compiler comes with a bare-metal C library
 # called newlib
-ARM_TOOL_PREFIX = "./gcc-arm-none-eabi-4_6-2012q4/bin/arm-none-eabi"
+ARM_TOOL_PREFIX = "./gcc-arm/bin/arm-none-eabi"
 
 env.Replace(CC="%s-gcc" % ARM_TOOL_PREFIX)
 env.Replace(AS="%s-as" % ARM_TOOL_PREFIX)

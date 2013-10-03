@@ -33,6 +33,7 @@
 #include "uart/uart.h"
 #include "gpio/gpio.h"
 #include "misc/misc.h"
+#include "timers/timer_interrupts.h"
 
 //-----------------------------------------------------------------------------
 //                           Functions declarations
@@ -112,12 +113,12 @@ unsigned long myvectors[] =
     (unsigned long) empty_def_handler,      // ADC 0 Seq 2                      32
     (unsigned long) empty_def_handler,      // ADC 0 Seq 3                      33
     (unsigned long) empty_def_handler,      // WDT 0 and 1                      34
-    (unsigned long) empty_def_handler,      // 16/32 bit timer 0 A              35
-    (unsigned long) empty_def_handler,      // 16/32 bit timer 0 B              36
-    (unsigned long) empty_def_handler,      // 16/32 bit timer 1 A              37
-    (unsigned long) empty_def_handler,      // 16/32 bit timer 1 B              38
-    (unsigned long) empty_def_handler,      // 16/32 bit timer 2 A              39
-    (unsigned long) empty_def_handler,      // 16/32 bit timer 2 B              40
+    (unsigned long) timer_0a_interrupt,     // 16/32 bit timer 0 A              35
+    (unsigned long) timer_0b_interrupt,     // 16/32 bit timer 0 B              36
+    (unsigned long) timer_1a_interrupt,     // 16/32 bit timer 1 A              37
+    (unsigned long) timer_1b_interrupt,     // 16/32 bit timer 1 B              38
+    (unsigned long) timer_2a_interrupt,     // 16/32 bit timer 2 A              39
+    (unsigned long) timer_2b_interrupt,     // 16/32 bit timer 2 B              40
     (unsigned long) empty_def_handler,      // Analog comparator 0              41
     (unsigned long) empty_def_handler,      // Analog comparator 1              42
     0,                                      // Reserved                         43
@@ -128,8 +129,8 @@ unsigned long myvectors[] =
     0,                                      // Reserved                         48
     (unsigned long) uart2_irq,              // UART 2                           49
     (unsigned long) empty_def_handler,      // SSI 1                            50
-    (unsigned long) empty_def_handler,      // 16/32 bit timer 3 A              51
-    (unsigned long) empty_def_handler,      // 16/32 bit timer 3 B              52
+    (unsigned long) timer_3a_interrupt,     // 16/32 bit timer 3 A              51
+    (unsigned long) timer_3b_interrupt,     // 16/32 bit timer 3 B              52
     (unsigned long) empty_def_handler,      // I2C 1                            53
     0,                                      // Reserved                         54
     (unsigned long) empty_def_handler,      // CAN 0                            55
@@ -163,8 +164,8 @@ unsigned long myvectors[] =
     0,                                      // Reserved                         83
     (unsigned long) empty_def_handler,      // I2C 2                            84
     (unsigned long) empty_def_handler,      // I2C 4                            85
-    (unsigned long) empty_def_handler,      // 16/32 bit timer 4 A              86
-    (unsigned long) empty_def_handler,      // 16/32 bit timer 4 B              87
+    (unsigned long) timer_4a_interrupt,     // 16/32 bit timer 4 A              86
+    (unsigned long) timer_4b_interrupt,     // 16/32 bit timer 4 B              87
     0,                                      // Reserved                         88
     0,                                      // Reserved                         89
     0,                                      // Reserved                         90
@@ -185,20 +186,20 @@ unsigned long myvectors[] =
     0,                                      // Reserved                         105
     0,                                      // Reserved                         106
     0,                                      // Reserved                         107
-    (unsigned long) empty_def_handler,      // 16/32 bit timer 5 A              108
-    (unsigned long) empty_def_handler,      // 16/32 bit timer 5 B              109
-    (unsigned long) empty_def_handler,      // 32/64 bit timer 0 A              110
-    (unsigned long) empty_def_handler,      // 32/64 bit timer 0 B              111
-    (unsigned long) empty_def_handler,      // 32/64 bit timer 1 A              112
-    (unsigned long) empty_def_handler,      // 32/64 bit timer 1 B              113
-    (unsigned long) empty_def_handler,      // 32/64 bit timer 2 A              114
-    (unsigned long) empty_def_handler,      // 32/64 bit timer 2 B              115
-    (unsigned long) empty_def_handler,      // 32/64 bit timer 3 A              116
-    (unsigned long) empty_def_handler,      // 32/64 bit timer 3 B              117
-    (unsigned long) empty_def_handler,      // 32/64 bit timer 4 A              118
-    (unsigned long) empty_def_handler,      // 32/64 bit timer 4 B              119
-    (unsigned long) empty_def_handler,      // 32/64 bit timer 5 A              120
-    (unsigned long) empty_def_handler,      // 32/64 bit timer 5 B              121
+    (unsigned long) timer_5a_interrupt,      // 16/32 bit timer 5 A              108
+    (unsigned long) timer_5b_interrupt,      // 16/32 bit timer 5 B              109
+    (unsigned long) timer_w0a_interrupt,      // 32/64 bit timer 0 A              110
+    (unsigned long) timer_w0b_interrupt,      // 32/64 bit timer 0 B              111
+    (unsigned long) timer_w1a_interrupt,      // 32/64 bit timer 1 A              112
+    (unsigned long) timer_w1b_interrupt,      // 32/64 bit timer 1 B              113
+    (unsigned long) timer_w2a_interrupt,      // 32/64 bit timer 2 A              114
+    (unsigned long) timer_w2b_interrupt,      // 32/64 bit timer 2 B              115
+    (unsigned long) timer_w3a_interrupt,      // 32/64 bit timer 3 A              116
+    (unsigned long) timer_w3b_interrupt,      // 32/64 bit timer 3 B              117
+    (unsigned long) timer_w4a_interrupt,      // 32/64 bit timer 4 A              118
+    (unsigned long) timer_w4b_interrupt,      // 32/64 bit timer 4 B              119
+    (unsigned long) timer_w5a_interrupt,      // 32/64 bit timer 5 A              120
+    (unsigned long) timer_w5b_interrupt,      // 32/64 bit timer 5 B              121
     (unsigned long) empty_def_handler,      // System Exception                 122
     0,                                      // Reserved                         123
     0,                                      // Reserved                         124
