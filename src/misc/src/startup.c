@@ -34,6 +34,7 @@
 #include "gpio/gpio.h"
 #include "misc/misc.h"
 #include "timers/timer_interrupts.h"
+#include "gpio/gpio_interrupts.h"
 
 //-----------------------------------------------------------------------------
 //                           Functions declarations
@@ -94,11 +95,11 @@ unsigned long myvectors[] =
     (unsigned long) empty_def_handler,      // PendSV                           14
     (unsigned long) empty_def_handler,      // SysTick                          15
     // Peripherial interrupts start here.
-    (unsigned long) empty_def_handler,      // GPIO Port A                      16
-    (unsigned long) empty_def_handler,      // GPIO Port B                      17
-    (unsigned long) empty_def_handler,      // GPIO Port C                      18
-    (unsigned long) empty_def_handler,      // GPIO Port D                      19
-    (unsigned long) empty_def_handler,      // GPIO Port E                      20
+    (unsigned long) gpioA_interrupt,        // GPIO Port A                      16
+    (unsigned long) gpioB_interrupt,        // GPIO Port B                      17
+    (unsigned long) gpioC_interrupt,        // GPIO Port C                      18
+    (unsigned long) gpioD_interrupt,        // GPIO Port D                      19
+    (unsigned long) gpioE_interrupt,        // GPIO Port E                      20
     (unsigned long) uart0_irq,              // UART 0                           21
     (unsigned long) uart1_irq,              // UART 1                           22
     (unsigned long) empty_def_handler,      // SSI 0                            23
@@ -124,7 +125,7 @@ unsigned long myvectors[] =
     0,                                      // Reserved                         43
     (unsigned long) empty_def_handler,      // System control                   44
     (unsigned long) empty_def_handler,      // Flash + EEPROM control           45
-    (unsigned long) empty_def_handler,      // GPIO Port F                      46
+    (unsigned long) gpioF_interrupt,        // GPIO Port F                      46
     0,                                      // Reserved                         47
     0,                                      // Reserved                         48
     (unsigned long) uart2_irq,              // UART 2                           49
@@ -291,7 +292,7 @@ void nmi_handler(void)
     // Just loop forever, so if you want to debug the processor it's running.
     while (1)
     {
-        flash_error(LED_BLUE, LED_GREEN, CLOCK_RATE / 16);
+        gpio_flash_error(LED_BLUE, LED_GREEN, CLOCK_RATE / 16);
     }
 }
 
@@ -301,7 +302,7 @@ void hardfault_handler(void)
     // Just loop forever, so if you want to debug the processor it's running.
     while (1)
     {
-        flash_error(LED_BLUE, LED_RED, CLOCK_RATE / 16);
+        gpio_flash_error(LED_BLUE, LED_RED, CLOCK_RATE / 16);
     }
 }
 
@@ -311,6 +312,6 @@ void empty_def_handler(void)
     // Just loop forever, so if you want to debug the processor it's running.
     while (1)
     {
-        flash_error(LED_GREEN, LED_RED, CLOCK_RATE / 16);
+        gpio_flash_error(LED_GREEN, LED_RED, CLOCK_RATE / 16);
     }
 }

@@ -117,7 +117,7 @@ void set_clock(void)
      * We could get 80MHz if we danced with RCC2 instead and got 400MHz / 5.
      */
     /* Clear PLL lock status */
-    /* NB: MISC = Masked Interrupt State, not miscellaneous */
+    /* MISC = Masked Interrupt Status & Clear, not miscellaneous */
     SYSCTL_MISC_R = SYSCTL_MISC_PLLLMIS;
 
     /* Enable the PLL. We're OK, BYPASS is still set */
@@ -148,6 +148,7 @@ void busy_sleep(uint32_t delay)
 {
     while(delay--)
     {
+        /* Stop this loop being optimised away */
         __asm("");
     }
 }
@@ -179,7 +180,7 @@ void enable_interrupt(unsigned int interrupt_id)
         NVIC_EN4_R = bit_field; 
         break;
     default:
-        flash_error(LED_RED, LED_BLUE, CLOCK_RATE / 32);
+        gpio_flash_error(LED_RED, LED_BLUE, CLOCK_RATE / 32);
         break;
     }
 }
@@ -211,7 +212,7 @@ void disable_interrupt(unsigned int interrupt_id)
         NVIC_DIS4_R = bit_field; 
         break;
     default:
-        flash_error(LED_RED, LED_BLUE, CLOCK_RATE / 32);
+        gpio_flash_error(LED_RED, LED_BLUE, CLOCK_RATE / 32);
         break;
     }
 }

@@ -54,6 +54,7 @@
 
 #include <stdio.h>
 #include <inttypes.h>
+#include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -67,6 +68,7 @@
 * Defines
 ***************************************************/
 
+/* A nice pause (for busy_sleep) */
 #define DELAY (CLOCK_RATE / 64)
 
 #define IN_0 GPIO_MAKE_IO_PIN(GPIO_PORT_D, 6) /* Speed input */
@@ -74,11 +76,26 @@
 #define IN_2 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 4) /* Button input */
 #define OUT_0 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 5) /* Tacho output */
 
+#define BUTTON_DEBOUNCE_COUNT 3 /* Number of 250 ms overflows required to register button */
+
+/* Magic value which indicates speed is approximately zero */
+#define STALLED 0xFFFFFFFF
+
+/* The rate at which get_counter() ticks in Hz */
+#define TICK_RATE (CLOCK_RATE / 64)
+
+/* Number of counter ticks elapsed before we declare speed to be zero. */
+#define MAX_PERIOD TICK_RATE /* One second */
+
 /**************************************************
 * Data Types
 **************************************************/
 
-/* None */
+typedef struct waveform_t
+{
+    uint32_t period;
+    uint32_t last_seen;
+} waveform_t;
 
 /**************************************************
 * Function Prototypes
@@ -86,24 +103,26 @@
 
 static void uart_chars_received(
     uart_id_t uart_id,
-    const char* buffer,
+    const char *buffer,
     size_t buffer_size
 );
 
 static void timer_interrupt(
     timer_module_t timer,
     timer_ab_t ab,
-    void* p_context,
+    void *p_context,
     uint32_t n_context
 );
 
 static uint32_t get_counter(void);
 
+static void input_interrupt(gpio_io_pin_t pin, void *p_context, uint32_t n_context);
+
 /**************************************************
 * Public Data
 **************************************************/
 
-/* None */
+extern unsigned int g_int_count;
 
 /**************************************************
 * Private Data
@@ -124,11 +143,18 @@ static const timer_config_t g_timer_config =
 
 static volatile uint32_t g_overflow_count;
 
-static volatile uint32_t g_led_factor = 65536;
+static volatile uint32_t g_output_rate = 65536;
+
+static volatile uint32_t g_new_output_rate = 0;
 
 static volatile uint32_t g_char_count = 0;
 
-static volatile uint32_t g_led_count = 0;
+static volatile bool g_out_level = false;
+
+static volatile bool g_button_count = 3;
+
+static volatile waveform_t speedo = { .last_seen = 0, .period = STALLED };
+static volatile waveform_t tacho  = { .last_seen = 0, .period = STALLED };
 
 /**************************************************
 * Public Functions
@@ -143,7 +169,7 @@ int main(void)
     /* Set system clock to CLOCK_RATE */
     set_clock();
 
-    enable_peripherals();
+    gpio_enable_peripherals();
 
     int res = uart_init(
                   UART_ID_0,
@@ -157,7 +183,7 @@ int main(void)
     if (res != 0)
     {
         /* Warn user UART failed to init */
-        flash_error(LED_RED, LED_GREEN, DELAY / 4);
+        gpio_flash_error(LED_RED, LED_GREEN, DELAY / 4);
     }
 
     gpio_make_input(IN_0);
@@ -165,41 +191,44 @@ int main(void)
     gpio_make_input(IN_2);
     gpio_make_output(OUT_0, 0);
 
+    gpio_register_handler(IN_0, GPIO_INTERRUPT_MODE_BOTH, input_interrupt, (void *) &speedo, 0);
+    //gpio_register_handler(IN_1, GPIO_INTERRUPT_MODE_BOTH, input_interrupt, (void*) &tacho, 0);
+
     lcd_init();
 
     lcd_get_version(&ver);
 
-    printf("Supplier=0x%04x, Product=0x%02x, Rev=0x%02x\n", ver.supplier_id, ver.product_id, ver.revision);
+    PRINTF("Supplier=0x%04x, Product=0x%02x, Rev=0x%02x\n", ver.supplier_id, ver.product_id, ver.revision);
 
     lcd_get_mode(&mode);
 
-    printf("colour_enhancement=%c\n", mode.colour_enhancement ? 'Y' : 'N');
-    printf("frc=%c\n", mode.frc ? 'Y' : 'N');
-    printf("lshift_rising_edge=%c\n", mode.lshift_rising_edge ? 'Y' : 'N');
-    printf("horiz_active_high=%c\n", mode.horiz_active_high ? 'Y' : 'N');
-    printf("vert_active_high=%c\n", mode.vert_active_high ? 'Y' : 'N');
-    printf("tft_type=%x\n", mode.tft_type);
-    printf("horiz_pixels=%u\n", mode.horiz_pixels);
-    printf("vert_pixels=%u\n", mode.vert_pixels);
-    printf("even_sequence=%x\n", mode.even_sequence);
-    printf("odd_sequence=%x\n", mode.odd_sequence);
+    PRINTF("colour_enhancement=%c\n", mode.colour_enhancement ? 'Y' : 'N');
+    PRINTF("frc=%c\n", mode.frc ? 'Y' : 'N');
+    PRINTF("lshift_rising_edge=%c\n", mode.lshift_rising_edge ? 'Y' : 'N');
+    PRINTF("horiz_active_high=%c\n", mode.horiz_active_high ? 'Y' : 'N');
+    PRINTF("vert_active_high=%c\n", mode.vert_active_high ? 'Y' : 'N');
+    PRINTF("tft_type=%x\n", mode.tft_type);
+    PRINTF("horiz_pixels=%u\n", mode.horiz_pixels);
+    PRINTF("vert_pixels=%u\n", mode.vert_pixels);
+    PRINTF("even_sequence=%x\n", mode.even_sequence);
+    PRINTF("odd_sequence=%x\n", mode.odd_sequence);
 
     pixel_width = lcd_get_pixel_width();
 
-    printf("Pixel width is %d\n", pixel_width);
+    PRINTF("Pixel width is %d\n", pixel_width);
 
     if (pixel_width != 8)
     {
         lcd_set_pixel_width(8);
         pixel_width = lcd_get_pixel_width();
-        printf("Pixel width is now %d (should be 8!)\n", pixel_width);
+        PRINTF("Pixel width is now %d (should be 8!)\n", pixel_width);
     }
 
     timer_configure(TIMER_WIDE_0, &g_timer_config);
     timer_register_handler(TIMER_WIDE_0, TIMER_A, timer_interrupt, NULL, 0);
     timer_register_handler(TIMER_WIDE_0, TIMER_B, timer_interrupt, NULL, 0);
-    timer_set_interval_load(TIMER_WIDE_0, TIMER_A, 1<<24); /* 2**24 / 66.67MHz = 0.25 secs between interrupts */
-    timer_set_interval_load(TIMER_WIDE_0, TIMER_B, g_led_factor);
+    timer_set_interval_load(TIMER_WIDE_0, TIMER_A, 1 << 24); /* 2**24 / 66.67MHz = 0.25 secs between interrupts */
+    timer_set_interval_load(TIMER_WIDE_0, TIMER_B, g_output_rate);
 
     /*
      * We as increment the overflow counter (a uint32_t) every 250 ms or so,
@@ -223,18 +252,17 @@ int main(void)
         then = get_counter();
         busy_sleep(DELAY);
         now = get_counter();
-        iprintf("Delay of %u took %" PRIu32 " 'timer' ticks\n", DELAY, now - then);
+        PRINTF("Delay of %u took %" PRIu32 " 'timer' ticks\n", DELAY, now - then);
 
-        printf("in_0=%d, in_1=%d, in_2=%d, time=0x%08"PRIx32", cc=%"PRIu32", gf=0x%08"PRIx32", gc=0x%08"PRIx32"\n",
+        PRINTF("in=%d%d%d, time=0x%08"PRIx32", or=%"PRIu32", button=%c\n",
                gpio_read_input(IN_0),
                gpio_read_input(IN_1),
                gpio_read_input(IN_2),
                get_counter(),
-               g_char_count,
-               g_led_factor,
-               g_led_count);
+               g_output_rate,
+               (g_button_count == 0) ? 'Y' : 'N');
 
-        gpio_set_output(LED_RED, 1);
+        PRINTF("Speedo = %"PRIu32" (0x%08"PRIx32"), Tacho = %"PRIu32" (0x%08"PRIx32")\n", speedo.period, speedo.last_seen, tacho.period, tacho.last_seen);
 
         /*
          * We should see RED square (top left), BLUE square (top right), GREEN
@@ -243,22 +271,17 @@ int main(void)
 
         busy_sleep(DELAY);
 
-#if 0
         then = get_counter();
         lcd_paint_clear_rectangle(0, 0, 479, 271);
         lcd_paint_fill_rectangle(MAKE_COLOUR(0xFF, 0x00, 0x00), 0, 100, 0, 100);
         now = get_counter();
-        iprintf("LCD took %" PRIu32 " 'timer' ticks\n", now - then);
-#endif
+        PRINTF("LCD took %"PRIu32" 'timer' ticks\n", now - then);
 
         busy_sleep(DELAY);
 
-        gpio_set_output(LED_RED, 0);
+        lcd_paint_clear_rectangle(0, 0, 479, 271);
 
-        //lcd_paint_clear_rectangle(0, 0, 479, 271);
-
-        //lcd_paint_fill_rectangle(MAKE_COLOUR(0x00, 0xFF, 0x00), 100, 200, 0, 100);
-
+        lcd_paint_fill_rectangle(MAKE_COLOUR(0x00, 0xFF, 0x00), 100, 200, 0, 100);
     }
 
     /* Shouldn't get here */
@@ -270,9 +293,12 @@ int main(void)
 * Private Functions
 ***************************************************/
 
+/**
+ * Called when characters arrive on the UART.
+ */
 static void uart_chars_received(
     uart_id_t uart_id,
-    const char* buffer,
+    const char *buffer,
     size_t buffer_size
 )
 {
@@ -284,45 +310,94 @@ static void uart_chars_received(
     {
         /* Deal with received characters */
         char c = buffer[i];
-        if (c == '1')
+        if (isdigit((int)c))
         {
-            if (g_led_factor >= 2)
-            {
-                g_led_factor = g_led_factor / 2;
-            }
+            g_new_output_rate *= 10;
+            g_new_output_rate += (c - '0');
         }
-        else if (c == '2')
+        else if ((c == '\r') || (c == '\n'))
         {
-            if (g_led_factor <= (1U<<31)-1)
+            if (!g_output_rate)
             {
-                g_led_factor = g_led_factor * 2;
+                /* Kick it off again as it was stopped */
+                timer_set_interval_load(TIMER_WIDE_0, TIMER_B, g_new_output_rate);
             }
+
+            g_output_rate = g_new_output_rate;
+            g_new_output_rate = 0;
+        }
+        else
+        {
+            g_new_output_rate = 0;
         }
         g_char_count++;
     }
 }
 
+/**
+ * Handles all the timer overflow interrupts.
+ *
+ * Registered on both A and B timers on TIMER_WIDE_0. Timer A is our master
+ * timing reference, used for measuring elapsed time between GPIO interrupts.
+ * Timer B is to drive the output pin at the specified rate.
+ */
 static void timer_interrupt(
     timer_module_t timer,
     timer_ab_t ab,
-    void* p_context,
+    void *p_context,
     uint32_t n_context
 )
 {
     if (ab == TIMER_A)
     {
         g_overflow_count++;
+        /* Blink on 1 overflow in 4, or 250ms per 1000ms */
+        gpio_set_output(LED_RED, ((g_overflow_count & 0x03) == 0) ? 1 : 0);
         timer_interrupt_clear(timer, TIMER_A_INTERRUPT_TIMEOUT);
+        /* Debounce the button */
+        if (gpio_read_input(IN_2))
+        {
+            if (g_button_count)
+            {
+                /* When this hits zero, the button has been satisfactorily pressed */
+                g_button_count--;
+            }
+        }
+        else
+        {
+            g_button_count = BUTTON_DEBOUNCE_COUNT;
+        }
+        /* Zero stalled input readings */
+        uint32_t now = get_counter();
+        if ((now - speedo.last_seen) > MAX_PERIOD)
+        {
+            speedo.period = STALLED;
+            speedo.last_seen = now;
+        }
+        if ((now - tacho.last_seen) > MAX_PERIOD)
+        {
+            tacho.period = STALLED;
+            tacho.last_seen = now;
+        }
     }
     else
     {
-        gpio_set_output(LED_BLUE, g_led_count & 1);
-        g_led_count++;
-        timer_set_interval_load(TIMER_WIDE_0, TIMER_B, g_led_factor);
         timer_interrupt_clear(timer, TIMER_B_INTERRUPT_TIMEOUT);
+        if (g_output_rate)
+        {
+            timer_set_interval_load(TIMER_WIDE_0, TIMER_B, g_output_rate);
+            gpio_set_output(OUT_0, g_out_level);
+            g_out_level = !g_out_level;
+        }
     }
 }
 
+/**
+ * Helper function that deals with the fact our timer regularly overflows. We count the overflows
+ * and this function returns that count munged with the current timer value.
+ *
+ * It's 32-bit @ 1MHz and so wraps every 71.5 minutes.
+ */
 static uint32_t get_counter(void)
 {
     uint32_t timer_val, overflow_val;
@@ -341,6 +416,20 @@ static uint32_t get_counter(void)
     timer_val |= (overflow_val << 18);
 
     return timer_val;
+}
+
+/*
+ * Called when one of our input pins changes state */
+static void input_interrupt(
+    gpio_io_pin_t pin,
+    void *p_context,
+    uint32_t n_context
+)
+{
+    volatile waveform_t *p = (waveform_t *) p_context;
+    uint32_t now = get_counter();
+    p->period = now - p->last_seen;
+    p->last_seen = now;
 }
 
 /**************************************************

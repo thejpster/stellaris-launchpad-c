@@ -28,7 +28,6 @@
 * Includes
 ***************************************************/
 
-#include <stdio.h>
 #include "misc/misc.h"
 #include "gpio/gpio.h"
 #include "../lcd.h"
@@ -38,7 +37,7 @@
 ***************************************************/
 
 /* Really conservative default */
-#define STROBE_DELAY 100 /* 100 = 28.1 us */
+#define STROBE_DELAY 10 /* 100 = 28.1 us */
 #define STROBE_READ_DELAY 1000
 
 /* WR = pin E2 */
@@ -291,7 +290,6 @@ void lcd_paint_fill_rectangle(
 )
 {
     size_t size = (1 + x2 - x1) * (1 + y2 - y1);
-    iprintf("Painting %u pixels\n", size);
     SET_CS();
     set_region(x1, x2, y1, y2);
     while (size--)
@@ -399,7 +397,7 @@ void lcd_paint_colour_rectangle(
 }
 
 /**************************************************
-* Private Functions
+* svate Functions
 ***************************************************/
 
 static void set_region(

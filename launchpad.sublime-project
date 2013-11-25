@@ -2,16 +2,8 @@
 	"folders":
 	[
 		{
+			"follow_symlinks": true,
 			"path": "/home/jonathan/Documents/programming/stellaris/launchpad"
 		}
-	],
-    "build_systems":
-    [
-        {
-            "name": "Project Scons",
-            "cmd": ["scons"],
-            "file_regex": "^(..[^:]*):([0-9]+):?([0-9]+)?:? (.*)$",
-            "working_dir": "${project_path:${folder}}"
-        }
-    ]
+	]
 }

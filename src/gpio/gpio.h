@@ -4,7 +4,7 @@
 *
 * Setup GPIOs for the Launchpad board
 *
-* Copyright (c) 2012 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2012-2013 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -37,6 +37,7 @@ extern "C" {
 * Includes
 ***************************************************/
 
+#include <stdint.h>
 #include "uart/uart.h"
 
 /**************************************************
@@ -44,9 +45,9 @@ extern "C" {
 ***************************************************/
 
 /* Macros to pack a port and pin into one value */
-#define GPIO_MAKE_IO_PIN(port, pin)  ( (gpio_io_pin_t) ( ((port) << 8) | (1<<(pin)) ) )
-#define GPIO_GET_PORT(io_pin)  ((io_pin) >> 8)
-#define GPIO_GET_PIN(io_pin)  ((io_pin) & 0xFF)
+#define GPIO_MAKE_IO_PIN(port, pin)  ( (gpio_io_pin_t) ( ((port) << 8U) | (1U<<(pin)) ) )
+#define GPIO_GET_PORT(io_pin)  ((io_pin) >> 8U)
+#define GPIO_GET_PIN(io_pin)  ((io_pin) & 0xFFU)
 
 /* The LEDs on the Launchpad board are pins GPIO_F1..3 */
 #define LED_RED   GPIO_MAKE_IO_PIN(GPIO_PORT_F, 1)
@@ -57,21 +58,40 @@ extern "C" {
 #define BUTTON_ONE GPIO_MAKE_IO_PIN(GPIO_PORT_F, 0)
 #define BUTTON_TWO GPIO_MAKE_IO_PIN(GPIO_PORT_F, 4)
 
+#ifndef GPIO_MAX_INTERRUPT_HANDLERS
+#define GPIO_MAX_INTERRUPT_HANDLERS 2
+#endif
+
 /**************************************************
 * Public Data Types
 **************************************************/
 
 typedef enum gpio_port_t
 {
-	GPIO_PORT_A,
-	GPIO_PORT_B,
-	GPIO_PORT_C,
-	GPIO_PORT_D,
-	GPIO_PORT_E,
-	GPIO_PORT_F
+    GPIO_PORT_A,
+    GPIO_PORT_B,
+    GPIO_PORT_C,
+    GPIO_PORT_D,
+    GPIO_PORT_E,
+    GPIO_PORT_F,
 } gpio_port_t;
 
+#define GPIO_NUM_PORTS (GPIO_PORT_F + 1)
+
 typedef int gpio_io_pin_t;
+
+typedef enum gpio_interrupt_mode_t
+{
+    GPIO_INTERRUPT_MODE_RISING,
+    GPIO_INTERRUPT_MODE_FALLING,
+    GPIO_INTERRUPT_MODE_BOTH
+} gpio_interrupt_mode_t;
+
+/*
+ * Functions matching this prototype can be registered and called when
+ * timer interrupts fire.
+ */
+typedef void (*gpio_interrupt_handler_t)(gpio_io_pin_t pin, void* p_context, uint32_t n_context);
 
 /**************************************************
 * Public Data
@@ -86,29 +106,29 @@ typedef int gpio_io_pin_t;
 /**
  * Enable the LEDs, buttons and UART0 on the launchpad board.
  */
-extern void enable_peripherals(void);
+extern void gpio_enable_peripherals(void);
 
 /**
  * Enable the two buttons on the launchpad board.
  */
-extern void enable_buttons(void);
+extern void gpio_enable_buttons(void);
 
 /**
  * Enable the RGB LED on the launchpad board.
  */
-extern void enable_leds(void);
+extern void gpio_enable_leds(void);
 
 /**
  * Set the GPIO pins so that UART0 can control GPIOA[0:1].
  * You still need to call uart_init().
  */
-extern void enable_uart(uart_id_t uart_id);
+extern void gpio_enable_uart(uart_id_t uart_id);
 
 /*
  * A useful means of conveying errors when you don't have a 
  * working UART.
  */
-extern void flash_error(gpio_io_pin_t pin_a, gpio_io_pin_t pin_b, unsigned int delay);
+extern void gpio_flash_error(gpio_io_pin_t pin_a, gpio_io_pin_t pin_b, unsigned int delay);
 
 /*
  * Set pin as output (low or high)
@@ -129,6 +149,16 @@ extern void gpio_set_output(gpio_io_pin_t pin, int level);
  * If a pin is already an input, read the level. 0 for low, 1 for high.
  */
 extern int gpio_read_input(gpio_io_pin_t pin);
+
+/*
+ * Register an interrupt handler.
+ */
+void gpio_register_handler(
+    gpio_io_pin_t pin,
+    gpio_interrupt_mode_t mode,
+    gpio_interrupt_handler_t handler_fn,
+    void* p_context,
+    uint32_t n_context);
 
 #ifdef __cplusplus
 }
