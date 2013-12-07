@@ -192,7 +192,7 @@ int main(void)
     gpio_make_output(OUT_0, 0);
 
     gpio_register_handler(IN_0, GPIO_INTERRUPT_MODE_BOTH, input_interrupt, (void *) &speedo, 0);
-    //gpio_register_handler(IN_1, GPIO_INTERRUPT_MODE_BOTH, input_interrupt, (void*) &tacho, 0);
+    gpio_register_handler(IN_1, GPIO_INTERRUPT_MODE_BOTH, input_interrupt, (void *) &tacho, 0);
 
     lcd_init();
 
@@ -272,14 +272,14 @@ int main(void)
         busy_sleep(DELAY);
 
         then = get_counter();
-        lcd_paint_clear_rectangle(0, 0, 479, 271);
-        lcd_paint_fill_rectangle(MAKE_COLOUR(0xFF, 0x00, 0x00), 0, 100, 0, 100);
+        lcd_paint_clear_rectangle(LCD_FIRST_COLUMN, LCD_FIRST_ROW, LCD_LAST_COLUMN, LCD_LAST_ROW);
+        lcd_paint_fill_rectangle(MAKE_COLOUR(0xFF, 0x00, 0x00), LCD_FIRST_COLUMN, 100, LCD_FIRST_ROW, 100);
         now = get_counter();
         PRINTF("LCD took %"PRIu32" 'timer' ticks\n", now - then);
 
         busy_sleep(DELAY);
 
-        lcd_paint_clear_rectangle(0, 0, 479, 271);
+        lcd_paint_clear_rectangle(LCD_FIRST_COLUMN, LCD_FIRST_ROW, LCD_LAST_COLUMN, LCD_LAST_ROW);
 
         lcd_paint_fill_rectangle(MAKE_COLOUR(0x00, 0xFF, 0x00), 100, 200, 0, 100);
     }
@@ -305,8 +305,7 @@ static void uart_chars_received(
     /* Don't do any printf here - we're in an interrupt and we
      * need to get out of it as quickly as possible.
      */
-    size_t i;
-    for (i = 0; i < buffer_size; i++)
+    for (size_t i = 0; i < buffer_size; i++)
     {
         /* Deal with received characters */
         char c = buffer[i];
@@ -419,13 +418,15 @@ static uint32_t get_counter(void)
 }
 
 /*
- * Called when one of our input pins changes state */
+ * Called when one of our input pins changes state
+ */
 static void input_interrupt(
     gpio_io_pin_t pin,
     void *p_context,
     uint32_t n_context
 )
 {
+    /* Don't care which pin - just use the given context */
     volatile waveform_t *p = (waveform_t *) p_context;
     uint32_t now = get_counter();
     p->period = now - p->last_seen;

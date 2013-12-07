@@ -47,7 +47,19 @@ extern "C" {
 * Public Defines
 ***************************************************/
 
-/* None */
+/* r, b and b should be 0x00..0xFF */
+#define MAKE_COLOUR(r, g, b) ( ((r) << 16) | ((g) << 8) | ((b) << 0) )
+/* count should also be 0x00..0xFF */
+#define MAKE_RLE_COLOUR(count, r, g, b) ( ((count) << 24) | ((r) << 16) | ((g) << 8) | ((b) << 0) )
+
+/* LCD sizes */
+#define LCD_WIDTH 480
+#define LCD_HEIGHT 272
+
+#define LCD_FIRST_COLUMN 0
+#define LCD_LAST_COLUMN (LCD_WIDTH-1)
+#define LCD_FIRST_ROW 0
+#define LCD_LAST_ROW (LCD_HEIGHT-1)
 
 /**************************************************
 * Public Data Types
@@ -95,11 +107,6 @@ struct lcd_ver_t
     uint8_t revision;
 };
 
-
-/* r, b and b should be 0x00..0xFF */
-#define MAKE_COLOUR(r, g, b) ( ((r) << 16) | ((g) << 8) | ((b) << 0) )
-/* count should also be 0x00..0xFF */
-#define MAKE_RLE_COLOUR(count, r, g, b) ( ((count) << 24) | ((r) << 16) | ((g) << 8) | ((b) << 0) )
 
 /**************************************************
 * Public Data

@@ -297,15 +297,32 @@ void gpio_set_output(gpio_io_pin_t pin, int level)
 }
 
 /*
+ * Set multiple output pins on a port.
+ */
+void gpio_set_outputs(gpio_port_t port, uint8_t outputs, uint8_t mask)
+{
+    register_map[port]->DATA[mask] = outputs;
+}
+
+
+/*
  * If a pin is already an input, read the level. 0 for low, 1 for high.
  */
-int gpio_read_input(gpio_io_pin_t pin)
+uint8_t gpio_read_input(gpio_io_pin_t pin)
 {
-    int result = 0;
+    uint8_t result = 0;
     gpio_port_t port = GPIO_GET_PORT(pin);
     reg_t mask = GPIO_GET_PIN(pin);
     result = (register_map[port]->DATA[mask]) ? 1 : 0;
     return result;
+}
+
+/*
+ * If a many pins on a port are already inputs, read the levels. 0 for low, 1 for high.
+ */
+uint8_t gpio_read_inputs(gpio_port_t port, uint8_t mask)
+{
+    return (uint8_t) register_map[port]->DATA[mask];
 }
 
 /*
@@ -318,12 +335,11 @@ void gpio_register_handler(
     void *p_context,
     uint32_t n_context)
 {
-    unsigned int i;
     gpio_port_t port = GPIO_GET_PORT(pin);
     reg_t mask = GPIO_GET_PIN(pin);
     gpio_registers_t * const p_gpio = register_map[port];
 
-    for (i = 0; i < NUMELTS(interrupt_handlers); i++)
+    for (unsigned int i = 0; i < NUMELTS(interrupt_handlers); i++)
     {
         gpio_interrupt_list_t *const p = &interrupt_handlers[i];
         if (!p->handler_fn)
@@ -411,22 +427,19 @@ static void enable_gpio_module(gpio_port_t port)
  */
 static void gpio_interrupt(gpio_port_t port)
 {
-    unsigned int pin;
-
     /* Capture the current enabled & active interrupts */
     uint8_t active_interrupts = register_map[port]->MIS_R;
 
     /* Clear only those interrupts we captured */
     register_map[port]->ICR_R = active_interrupts;
 
-    for (pin = 0; pin < 8; pin++)
+    for (unsigned int pin = 0; pin < 8; pin++)
     {
         /* Is there an interrupt on this pin? */
         if (active_interrupts & (1 << pin))
         {
             /* Now cycle through all the registered handlers */
-            unsigned int i;
-            for (i = 0; i < NUMELTS(interrupt_handlers); i++)
+            for (unsigned int i = 0; i < NUMELTS(interrupt_handlers); i++)
             {
                 const gpio_interrupt_list_t *const p = &interrupt_handlers[i];
                 if (p->handler_fn && (p->pin == GPIO_MAKE_IO_PIN(port, pin)))

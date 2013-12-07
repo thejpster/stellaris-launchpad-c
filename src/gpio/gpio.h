@@ -146,9 +146,27 @@ extern void gpio_make_input(gpio_io_pin_t pin);
 extern void gpio_set_output(gpio_io_pin_t pin, int level);
 
 /*
+ * Set multiple output pins on a port.
+ */
+extern void gpio_set_outputs(gpio_port_t port, uint8_t outputs, uint8_t mask);
+
+/* Faster versions for specific ports */
+#define gpio_set_outputs_porta(outputs, mask) do { GPIO_PORTA_DATA_BITS_R[mask] = outputs; } while(0)
+#define gpio_set_outputs_portb(outputs, mask) do { GPIO_PORTB_DATA_BITS_R[mask] = outputs; } while(0)
+#define gpio_set_outputs_portc(outputs, mask) do { GPIO_PORTC_DATA_BITS_R[mask] = outputs; } while(0)
+#define gpio_set_outputs_portd(outputs, mask) do { GPIO_PORTD_DATA_BITS_R[mask] = outputs; } while(0)
+#define gpio_set_outputs_porte(outputs, mask) do { GPIO_PORTE_DATA_BITS_R[mask] = outputs; } while(0)
+#define gpio_set_outputs_portf(outputs, mask) do { GPIO_PORTF_DATA_BITS_R[mask] = outputs; } while(0)
+
+/*
  * If a pin is already an input, read the level. 0 for low, 1 for high.
  */
-extern int gpio_read_input(gpio_io_pin_t pin);
+extern uint8_t gpio_read_input(gpio_io_pin_t pin);
+
+/*
+ * If a many pins on a port are already inputs, read the levels. 0 for low, 1 for high.
+ */
+extern uint8_t gpio_read_inputs(gpio_port_t port, uint8_t mask);
 
 /*
  * Register an interrupt handler.

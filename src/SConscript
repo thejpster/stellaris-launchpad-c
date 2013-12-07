@@ -42,8 +42,10 @@ env.Replace(CC="%s-gcc" % ARM_TOOL_PREFIX)
 env.Replace(AS="%s-as" % ARM_TOOL_PREFIX)
 env.Replace(LD="%s-gcc" % ARM_TOOL_PREFIX)
 
-env.Replace(CCCOMSTR = "[CC] $SOURCE -> $TARGET")
-env.Replace(LINKCOMSTR = "[LD] $SOURCE -> $TARGET")
+verbose = ARGUMENTS.get('VERBOSE', 0)
+if not verbose:
+    env.Replace(CCCOMSTR = "[CC] $SOURCE -> $TARGET")
+    env.Replace(LINKCOMSTR = "[LD] $SOURCE -> $TARGET")
 
 # Builder which uses objcopy to turn the .elf into something we can flash
 strip = Builder(action='%s-objcopy -O binary ${SOURCE} ${TARGET}' % ARM_TOOL_PREFIX)

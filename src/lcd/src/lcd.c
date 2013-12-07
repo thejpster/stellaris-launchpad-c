@@ -42,19 +42,22 @@
 
 /* WR = pin E2 */
 #define STROBE_WR() do { \
-        CLEAR_BITS(GPIO_PORTE_DATA_R, (1 << 2)); \
+        gpio_set_outputs_porte(0, (1 << 2)); \
         busy_sleep(STROBE_DELAY); \
-        SET_BITS(GPIO_PORTE_DATA_R, (1 << 2)); \
+        gpio_set_outputs_porte(0xFF, (1 << 2)); \
     } while(0)
 
-#define SET_COMMAND()  CLEAR_BITS(GPIO_PORTD_DATA_R, (1 << 3))
-#define SET_DATA()     SET_BITS(GPIO_PORTD_DATA_R, (1 << 3))
+/* RS (or CD) = pin D3 */
+#define SET_COMMAND()  gpio_set_outputs_portd(0, (1 << 3))
+#define SET_DATA()     gpio_set_outputs_portd(0xFF, (1 << 3))
 
-#define SET_CS()       CLEAR_BITS(GPIO_PORTD_DATA_R, (1 << 2))
-#define CLEAR_CS()     SET_BITS(GPIO_PORTD_DATA_R, (1 << 2))
+/* CS = pin D2 */
+#define SET_CS()       gpio_set_outputs_portd(0, (1 << 2))
+#define CLEAR_CS()     gpio_set_outputs_portd(0xFF, (1 << 2))
 
-#define SET_RD()       CLEAR_BITS(GPIO_PORTE_DATA_R, (1 << 1))
-#define CLEAR_RD()     SET_BITS(GPIO_PORTE_DATA_R, (1 << 1))
+/* RD = pin E1 */
+#define SET_RD()       gpio_set_outputs_porte(0, (1 << 1))
+#define CLEAR_RD()     gpio_set_outputs_porte(0xFF, (1 << 1))
 
 /**************************************************
 * Data Types
@@ -449,8 +452,8 @@ static uint8_t read_data(
     SET_DATA();
     SET_RD();
     busy_sleep(STROBE_READ_DELAY);
-    result = (GPIO_PORTD_DATA_R & 0x03);
-    result |= (GPIO_PORTA_DATA_R & 0xFC);
+    result = gpio_read_inputs(GPIO_PORT_D, 0x03);
+    result |= gpio_read_inputs(GPIO_PORT_A, 0xFC);
     CLEAR_RD();
     return result;
 }
@@ -459,8 +462,8 @@ static void send_byte(
     uint8_t byte
 )
 {
-    GPIO_PORTD_DATA_R = (GPIO_PORTD_DATA_R & 0xFC) | (byte & 0x03);
-    GPIO_PORTA_DATA_R = (byte & 0xFC) | (GPIO_PORTA_DATA_R & 0x03);
+    gpio_set_outputs_portd(byte, 0x03);
+    gpio_set_outputs_porta(byte, 0xfc);
 }
 
 /**************************************************
