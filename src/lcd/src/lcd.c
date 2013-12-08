@@ -37,27 +37,28 @@
 ***************************************************/
 
 /* Really conservative default */
-#define STROBE_DELAY 10 /* 100 = 28.1 us */
-#define STROBE_READ_DELAY 1000
+#define STROBE_DELAY 10 /* 10 = 2.1 us */
+#define STROBE_READ_DELAY 10
 
 /* WR = pin E2 */
 #define STROBE_WR() do { \
-        gpio_set_outputs_porte(0, (1 << 2)); \
+        gpio_set_outputs_porte(0, (1U << 2)); \
         busy_sleep(STROBE_DELAY); \
-        gpio_set_outputs_porte(0xFF, (1 << 2)); \
+        gpio_set_outputs_porte(0xFF, (1U << 2)); \
+        busy_sleep(2); \
     } while(0)
 
-/* RS (or CD) = pin D3 */
-#define SET_COMMAND()  gpio_set_outputs_portd(0, (1 << 3))
-#define SET_DATA()     gpio_set_outputs_portd(0xFF, (1 << 3))
+/* RS (or C/D) = pin D3 */
+#define SET_COMMAND()  do { gpio_set_outputs_portd(0, (1U << 3)); busy_sleep(2); } while(0)
+#define SET_DATA()     do { gpio_set_outputs_portd(0xFF, (1U << 3)); busy_sleep(2); } while(0)
 
 /* CS = pin D2 */
-#define SET_CS()       gpio_set_outputs_portd(0, (1 << 2))
-#define CLEAR_CS()     gpio_set_outputs_portd(0xFF, (1 << 2))
+#define SET_CS()       do { gpio_set_outputs_portd(0, (1U << 2)); busy_sleep(2); } while(0)
+#define CLEAR_CS()     do { gpio_set_outputs_portd(0xFF, (1U << 2)); busy_sleep(2); } while(0)
 
 /* RD = pin E1 */
-#define SET_RD()       gpio_set_outputs_porte(0, (1 << 1))
-#define CLEAR_RD()     gpio_set_outputs_porte(0xFF, (1 << 1))
+#define SET_RD()       do { gpio_set_outputs_porte(0, (1U << 1)); busy_sleep(2); } while(0)
+#define CLEAR_RD()     do { gpio_set_outputs_porte(0xFF, (1U << 1)); busy_sleep(2); } while(0)
 
 /**************************************************
 * Data Types
@@ -79,6 +80,8 @@ static void send_command(uint8_t command);
 static void send_data(uint8_t data);
 static uint8_t read_data(void);
 static void send_byte(uint8_t byte);
+static void make_bus_output(void);
+static void make_bus_input(void);
 
 /**************************************************
 * Public Data
@@ -112,15 +115,7 @@ int lcd_init(void)
     gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_E, 2), 1);
     gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_E, 3), 1);
 
-    /* 8-bit data bus */
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_D, 0), 1);
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_D, 1), 1);
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 2), 1);
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 3), 1);
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 4), 1);
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 5), 1);
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 6), 1);
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 7), 1);
+    make_bus_output();
 
     /* @todo Do an LCD comms test here? */
 
@@ -135,8 +130,10 @@ int lcd_get_pixel_width(void)
     int result = 0;
     SET_CS();
     send_command(0xF1);
+    make_bus_input();
     result = read_data();
     CLEAR_CS();
+    make_bus_output();
     switch (result)
     {
     case 0x00:
@@ -201,13 +198,13 @@ void lcd_get_mode(struct lcd_mode_t *p_mode)
     uint8_t temp = 0;
     SET_CS();
     send_command(0xB1);
-
+    make_bus_input();
     temp = read_data();
-    p_mode->colour_enhancement = (temp & (1 << 4)) ? 1 : 0;
-    p_mode->frc = (temp & (1 << 3)) ? 1 : 0;
-    p_mode->lshift_rising_edge = (temp & (1 << 2)) ? 1 : 0;
-    p_mode->horiz_active_high = (temp & (1 << 1)) ? 1 : 0;
-    p_mode->vert_active_high = (temp & (1 << 0)) ? 1 : 0;
+    p_mode->colour_enhancement = (temp & (1U << 4)) ? 1 : 0;
+    p_mode->frc = (temp & (1U << 3)) ? 1 : 0;
+    p_mode->lshift_rising_edge = (temp & (1U << 2)) ? 1 : 0;
+    p_mode->horiz_active_high = (temp & (1U << 1)) ? 1 : 0;
+    p_mode->vert_active_high = (temp & (1U << 0)) ? 1 : 0;
 
     temp = read_data();
     p_mode->tft_type = ((temp >> 5) & 0x03);
@@ -227,6 +224,7 @@ void lcd_get_mode(struct lcd_mode_t *p_mode)
     p_mode->odd_sequence = (temp >> 0) & 0x07;
 
     CLEAR_CS();
+    make_bus_output();
 }
 
 /**
@@ -234,9 +232,10 @@ void lcd_get_mode(struct lcd_mode_t *p_mode)
  */
 void lcd_get_version(struct lcd_ver_t *p_ver)
 {
-    uint8_t temp = 0;
+    uint8_t temp;
     SET_CS();
     send_command(0xA1); /* Read Data Descriptor Block / DDB */
+    make_bus_input();
 
     temp = read_data();
     p_ver->supplier_id = temp << 8;
@@ -250,9 +249,11 @@ void lcd_get_version(struct lcd_ver_t *p_ver)
     p_ver->revision = temp;
 
     /* Should be 0xFF */
-    read_data();
+    temp = read_data();
+    p_ver->check_value = temp;
 
     CLEAR_CS();
+    make_bus_output();
 }
 
 /**
@@ -455,6 +456,7 @@ static uint8_t read_data(
     result = gpio_read_inputs(GPIO_PORT_D, 0x03);
     result |= gpio_read_inputs(GPIO_PORT_A, 0xFC);
     CLEAR_RD();
+    busy_sleep(2);
     return result;
 }
 
@@ -464,6 +466,32 @@ static void send_byte(
 {
     gpio_set_outputs_portd(byte, 0x03);
     gpio_set_outputs_porta(byte, 0xfc);
+}
+
+static void make_bus_output(void)
+{
+    /* 8-bit data bus */
+    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_D, 0), 0);
+    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_D, 1), 0);
+    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 2), 0);
+    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 3), 0);
+    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 4), 0);
+    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 5), 0);
+    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 6), 0);
+    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 7), 0);
+}
+
+static void make_bus_input(void)
+{
+    /* 8-bit data bus */
+    gpio_make_input(GPIO_MAKE_IO_PIN(GPIO_PORT_D, 0));
+    gpio_make_input(GPIO_MAKE_IO_PIN(GPIO_PORT_D, 1));
+    gpio_make_input(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 2));
+    gpio_make_input(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 3));
+    gpio_make_input(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 4));
+    gpio_make_input(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 5));
+    gpio_make_input(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 6));
+    gpio_make_input(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 7));
 }
 
 /**************************************************

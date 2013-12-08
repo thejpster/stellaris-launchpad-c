@@ -105,6 +105,7 @@ struct lcd_ver_t
     uint16_t supplier_id;
     uint8_t product_id;
     uint8_t revision;
+    uint8_t check_value; /* Should be FF */
 };
 
 
