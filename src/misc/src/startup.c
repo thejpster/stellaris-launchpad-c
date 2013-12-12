@@ -292,7 +292,7 @@ void nmi_handler(void)
     // Just loop forever, so if you want to debug the processor it's running.
     while (1)
     {
-        gpio_flash_error(LED_BLUE, LED_GREEN, CLOCK_RATE / 16);
+        gpio_flash_error(LED_BLUE, LED_GREEN, 250);
     }
 }
 
@@ -302,7 +302,7 @@ void hardfault_handler(void)
     // Just loop forever, so if you want to debug the processor it's running.
     while (1)
     {
-        gpio_flash_error(LED_BLUE, LED_RED, CLOCK_RATE / 16);
+        gpio_flash_error(LED_BLUE, LED_RED, 250);
     }
 }
 
@@ -312,6 +312,6 @@ void empty_def_handler(void)
     // Just loop forever, so if you want to debug the processor it's running.
     while (1)
     {
-        gpio_flash_error(LED_GREEN, LED_RED, CLOCK_RATE / 16);
+        gpio_flash_error(LED_GREEN, LED_RED, 250);
     }
 }

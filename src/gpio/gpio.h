@@ -128,7 +128,7 @@ extern void gpio_enable_uart(uart_id_t uart_id);
  * A useful means of conveying errors when you don't have a 
  * working UART.
  */
-extern void gpio_flash_error(gpio_io_pin_t pin_a, gpio_io_pin_t pin_b, unsigned int delay);
+extern void gpio_flash_error(gpio_io_pin_t pin_a, gpio_io_pin_t pin_b, unsigned int delay_ms);
 
 /*
  * Set pin as output (low or high)

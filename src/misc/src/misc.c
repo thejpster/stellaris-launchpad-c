@@ -37,7 +37,7 @@
 * Defines
 ***************************************************/
 
-/* None */
+#define SLEEP_LOOPS_PER_MS 4740
 
 /**************************************************
 * Function Prototypes
@@ -153,6 +153,16 @@ void busy_sleep(uint32_t delay)
     }
 }
 
+void delay_ms(uint32_t delay)
+{
+    busy_sleep(delay * SLEEP_LOOPS_PER_MS);
+}
+
+void delay_us(uint32_t delay)
+{
+    busy_sleep((delay * SLEEP_LOOPS_PER_MS) / 1000);
+}
+
 /*
  * Enable an interrupt in the NIC.
  * Writing a 0 to the enable register has no
@@ -180,7 +190,7 @@ void enable_interrupt(unsigned int interrupt_id)
         NVIC_EN4_R = bit_field; 
         break;
     default:
-        gpio_flash_error(LED_RED, LED_BLUE, CLOCK_RATE / 32);
+        gpio_flash_error(LED_RED, LED_GREEN, 1000);
         break;
     }
 }
@@ -212,7 +222,7 @@ void disable_interrupt(unsigned int interrupt_id)
         NVIC_DIS4_R = bit_field; 
         break;
     default:
-        gpio_flash_error(LED_RED, LED_BLUE, CLOCK_RATE / 32);
+        gpio_flash_error(LED_RED, LED_BLUE, 1000);
         break;
     }
 }

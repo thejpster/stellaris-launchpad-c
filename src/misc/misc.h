@@ -76,9 +76,16 @@ typedef volatile unsigned long reg_t;
 extern void set_clock(void);
 
 /**
- * Rough and ready sleep function.
+ * Rough and ready sleep function that just
+ * spins in a loop.
  */
 extern void busy_sleep(uint32_t delay);
+
+/**
+ * Calibrated (ish) sleep functions.
+ */
+void delay_ms(uint32_t delay);
+void delay_us(uint32_t delay);
 
 /**
  * Enable an interrupt. See table 2-9 in [1].

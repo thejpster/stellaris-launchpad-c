@@ -245,10 +245,10 @@ void gpio_flash_error(gpio_io_pin_t pin_a, gpio_io_pin_t pin_b, unsigned int del
     {
         gpio_set_output(pin_a, 1);
         gpio_set_output(pin_b, 0);
-        busy_sleep(delay);
+        delay_ms(delay);
         gpio_set_output(pin_a, 0);
         gpio_set_output(pin_b, 1);
-        busy_sleep(delay);
+        delay_ms(delay);
     }
 }
 
@@ -366,7 +366,7 @@ void gpio_register_handler(
                 SET_BITS(p_gpio->IBE_R, mask);
                 break;
             default:
-                gpio_flash_error(LED_RED, LED_GREEN, CLOCK_RATE / 4);
+                gpio_flash_error(LED_RED, LED_GREEN, 500);
                 break;
             }
             /* Enable the pin interrupt in the mask register */

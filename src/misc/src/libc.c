@@ -98,7 +98,7 @@ caddr_t _sbrk(int incr) {
     prev_heap_end = heap_end;
     if ((heap_end + incr) > &_heap_top) {
         /* Flash the red LED to signify heap exhaustion */
-        gpio_flash_error(LED_RED, 0, CLOCK_RATE / 20);
+        gpio_flash_error(LED_RED, 0, 500);
     }
 
     heap_end += incr;
