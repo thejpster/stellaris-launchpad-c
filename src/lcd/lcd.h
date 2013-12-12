@@ -83,6 +83,16 @@ enum lcd_tft_rgb_sequence_t
     LCD_TFT_BGR = 0x05
 };
 
+enum lcd_pixel_width_t
+{
+    LCD_PIXEL_WIDTH_8 = 0,
+    LCD_PIXEL_WIDTH_12 = 1,
+    LCD_PIXEL_WIDTH_16_888 = 2,
+    LCD_PIXEL_WIDTH_16_565 = 3,
+    LCD_PIXEL_WIDTH_18 = 4,
+    LCD_PIXEL_WIDTH_9 = 6
+};
+
 typedef unsigned int lcd_row_t;
 typedef unsigned int lcd_col_t;
 
@@ -106,6 +116,15 @@ struct lcd_ver_t
     uint8_t product_id;
     uint8_t revision;
     uint8_t check_value; /* Should be FF */
+};
+
+
+struct lcd_period_t
+{
+    uint16_t total;
+    uint16_t display_start;
+    uint8_t sync_pulse_width;
+    uint16_t sync_pulse_start;
 };
 
 
@@ -144,15 +163,18 @@ struct lcd_ver_t
  */
 extern int lcd_init(void);
 
-/**
- * @return width in bits, i.e. 8, 9, 12, 16 or 18
- */
-extern int lcd_get_pixel_width(void);
+/* Make all pins inputs */
+extern void lcd_deinit(void);
 
 /**
- * @param width should be in bits, i.e. 8, 9, 12, 16 or 18
+ * @return width data bus width for pixel data
  */
-extern void lcd_set_pixel_width(int width);
+extern enum lcd_pixel_width_t lcd_get_pixel_width(void);
+
+/**
+ * @param width the new desired bus width (for pixel data only, not commands).
+ */
+extern void lcd_set_pixel_width(enum lcd_pixel_width_t width);
 
 /**
  * @param p_mode Pointer to LCD mode structure which will be filled in
@@ -163,6 +185,14 @@ extern void lcd_get_mode(struct lcd_mode_t *p_mode);
  * @param p_ver Pointer to LCD version structure which will be filled in
  */
 extern void lcd_get_version(struct lcd_ver_t *p_ver);
+
+extern void lcd_get_horiz_period(struct lcd_period_t *p_period);
+
+extern void lcd_get_vert_period(struct lcd_period_t *p_period);
+
+extern void lcd_on(void);
+
+extern void lcd_off(void);
 
 /**
  * Paints a solid rectangle to the LCD in black.

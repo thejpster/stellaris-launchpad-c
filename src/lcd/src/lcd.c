@@ -37,34 +37,127 @@
 ***************************************************/
 
 /* Really conservative default */
-#define STROBE_DELAY 10 /* 10 = 2.1 us */
 #define STROBE_READ_DELAY 10
 
 /* WR = pin E2 */
 #define STROBE_WR() do { \
-        gpio_set_outputs_porte(0, (1U << 2)); \
-        busy_sleep(STROBE_DELAY); \
-        gpio_set_outputs_porte(0xFF, (1U << 2)); \
+        gpio_set_output(LCD_WR, 0); \
+        gpio_set_output(LCD_WR, 1); \
         busy_sleep(2); \
     } while(0)
 
 /* RS (or C/D) = pin D3 */
-#define SET_COMMAND()  do { gpio_set_outputs_portd(0, (1U << 3)); busy_sleep(2); } while(0)
-#define SET_DATA()     do { gpio_set_outputs_portd(0xFF, (1U << 3)); busy_sleep(2); } while(0)
+#define SET_COMMAND()  gpio_set_output(LCD_COMMAND_DATA, 0)
+#define SET_DATA()     gpio_set_output(LCD_COMMAND_DATA, 1)
 
-/* CS = pin D2 */
-#define SET_CS()       do { gpio_set_outputs_portd(0, (1U << 2)); busy_sleep(2); } while(0)
-#define CLEAR_CS()     do { gpio_set_outputs_portd(0xFF, (1U << 2)); busy_sleep(2); } while(0)
+/* CS = pin D2, active low */
+#define SET_CS()       do { gpio_set_output(LCD_CS, 0); delay_ms(1); } while(0)
+#define CLEAR_CS()     do { gpio_set_output(LCD_CS, 1); delay_ms(1); } while(0)
 
-/* RD = pin E1 */
-#define SET_RD()       do { gpio_set_outputs_porte(0, (1U << 1)); busy_sleep(2); } while(0)
-#define CLEAR_RD()     do { gpio_set_outputs_porte(0xFF, (1U << 1)); busy_sleep(2); } while(0)
+/* RD = pin E1, active low */
+#define SET_RD()       gpio_set_output(LCD_RD, 0)
+#define CLEAR_RD()     gpio_set_output(LCD_RD, 1)
+
+/* RESET = pin E3, active low */
+#define SET_RST()       gpio_set_output(LCD_RST, 0)
+#define CLEAR_RST()     gpio_set_output(LCD_RST, 1)
+
+#define LCD_CS GPIO_MAKE_IO_PIN(GPIO_PORT_D, 2)
+#define LCD_COMMAND_DATA GPIO_MAKE_IO_PIN(GPIO_PORT_D, 3)
+#define LCD_RD GPIO_MAKE_IO_PIN(GPIO_PORT_E, 1)
+#define LCD_WR GPIO_MAKE_IO_PIN(GPIO_PORT_E, 2)
+#define LCD_RST GPIO_MAKE_IO_PIN(GPIO_PORT_E, 3)
+#define LCD_DATA0 GPIO_MAKE_IO_PIN(GPIO_PORT_D, 0)
+#define LCD_DATA1 GPIO_MAKE_IO_PIN(GPIO_PORT_D, 1)
+#define LCD_DATA2 GPIO_MAKE_IO_PIN(GPIO_PORT_A, 2)
+#define LCD_DATA3 GPIO_MAKE_IO_PIN(GPIO_PORT_A, 3)
+#define LCD_DATA4 GPIO_MAKE_IO_PIN(GPIO_PORT_A, 4)
+#define LCD_DATA5 GPIO_MAKE_IO_PIN(GPIO_PORT_A, 5)
+#define LCD_DATA6 GPIO_MAKE_IO_PIN(GPIO_PORT_A, 6)
+#define LCD_DATA7 GPIO_MAKE_IO_PIN(GPIO_PORT_A, 7)
 
 /**************************************************
 * Data Types
 **************************************************/
 
-/* None */
+enum ssd1963_cmd_t
+{
+    CMD_NOP = 0x00,
+    CMD_SOFT_RESET = 0x01,
+    CMD_GET_PWR_MODE = 0x0A,
+    CMD_GET_ADDR_MODE = 0x0B,
+    CMD_GET_DISPLAY_MODE = 0x0D,
+    CMD_GET_TEAR_EFFECT_STATUS = 0x0E,
+    CMD_ENT_SLEEP = 0x10,
+    CMD_EXIT_SLEEP = 0x11,
+    CMD_ENT_PARTIAL_MODE = 0x12,
+    CMD_ENT_NORMAL_MODE = 0x13,
+    CMD_EXIT_INVERT_MODE = 0x20,
+    CMD_ENT_INVERT_MODE = 0x21,
+    CMD_SET_GAMMA = 0x26,
+    CMD_BLANK_DISPLAY = 0x28,
+    CMD_ON_DISPLAY = 0x29,
+    CMD_SET_COLUMN = 0x2A,
+    CMD_SET_PAGE = 0x2B,
+    CMD_WR_MEMSTART = 0x2C,
+    CMD_RD_MEMSTART = 0x2E,
+    CMD_SET_PARTIAL_AREA = 0x30,
+    CMD_SET_SCROLL_AREA = 0x33,
+    CMD_SET_TEAR_OFF = 0x34,
+    CMD_SET_TEAR_ON = 0x35,
+    CMD_SET_ADDR_MODE = 0x36,
+    CMD_SET_SCROLL_START = 0x37,
+    CMD_EXIT_IDLE_MODE = 0x38,
+    CMD_ENT_IDLE_MODE = 0x39,
+    CMD_WR_MEM_AUTO = 0x3C,
+    CMD_RD_MEM_AUTO = 0x3E,
+    CMD_SET_TEAR_SCANLINE = 0x44,
+    CMD_GET_SCANLINE = 0x45,
+    CMD_RD_DDB_START = 0xA1,
+    CMD_SET_PANEL_MODE = 0xB0,
+    CMD_GET_PANEL_MODE = 0xB1,
+    CMD_SET_HOR_PERIOD = 0xB4,
+    CMD_GET_HOR_PERIOD = 0xB5,
+    CMD_SET_VER_PERIOD = 0xB6,
+    CMD_GET_VER_PERIOD = 0xB7,
+    CMD_SET_GPIO_CONF = 0xB8,
+    CMD_GET_GPIO_CONF = 0xB9,
+    CMD_SET_GPIO_VAL = 0xBA,
+    CMD_GET_GPIO_STATUS = 0xBB,
+    CMD_SET_POST_PROC = 0xBC,
+    CMD_GET_POST_PROC = 0xBD,
+    CMD_SET_PWM_CONF = 0xBE,
+    CMD_GET_PWM_CONF = 0xBF,
+    CMD_SET_LCD_GEN0 = 0xC0,
+    CMD_GET_LCD_GEN0 = 0xC1,
+    CMD_SET_LCD_GEN1 = 0xC2,
+    CMD_GET_LCD_GEN1 = 0xC3,
+    CMD_SET_LCD_GEN2 = 0xC4,
+    CMD_GET_LCD_GEN2 = 0xC5,
+    CMD_SET_LCD_GEN3 = 0xC6,
+    CMD_GET_LCD_GEN3 = 0xC7,
+    CMD_SET_GPIO0_ROP = 0xC8,
+    CMD_GET_GPIO0_ROP = 0xC9,
+    CMD_SET_GPIO1_ROP = 0xCA,
+    CMD_GET_GPIO1_ROP = 0xCB,
+    CMD_SET_GPIO2_ROP = 0xCC,
+    CMD_GET_GPIO2_ROP = 0xCD,
+    CMD_SET_GPIO3_ROP = 0xCE,
+    CMD_GET_GPIO3_ROP = 0xCF,
+    CMD_SET_ABC_DBC_CONF = 0xD0,
+    CMD_GET_ABC_DBC_CONF = 0xD1,
+    CMD_SET_DBC_THRES = 0xD4,
+    CMD_GET_DBC_THRES = 0xD5,
+    CMD_PLL_START = 0xE0,
+    CMD_SET_PLL_MN = 0xE2,
+    CMD_GET_PLL_MN = 0xE3,
+    CMD_GET_PLL_STATUS = 0xE4,
+    CMD_ENT_DEEP_SLEEP = 0xE5,
+    CMD_SET_PCLK = 0xE6,
+    CMD_GET_PCLK = 0xE7,
+    CMD_SET_DATA_INTERFACE = 0xF0,
+    CMD_GET_DATA_INTERFACE = 0xF1,
+};
 
 /**************************************************
 * Function Prototypes
@@ -76,10 +169,12 @@ static void set_region(
     lcd_row_t y1,
     lcd_row_t y2
 );
-static void send_command(uint8_t command);
+static void do_command(enum ssd1963_cmd_t command, const uint8_t *p_data_out, size_t data_out_len, uint8_t *p_data_in, size_t data_in_len);
+static void send_command(enum ssd1963_cmd_t command);
 static void send_data(uint8_t data);
 static uint8_t read_data(void);
-static void send_byte(uint8_t byte);
+static void write_pixel(uint32_t pixel);
+static void write_byte(uint8_t byte);
 static void make_bus_output(void);
 static void make_bus_input(void);
 
@@ -107,87 +202,61 @@ static void make_bus_input(void);
  */
 int lcd_init(void)
 {
-    /* /CS and /RS */
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_D, 2), 1);
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_D, 3), 1);
-    /* /RD and /WR and /RST */
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_E, 1), 1);
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_E, 2), 1);
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_E, 3), 1);
+    lcd_deinit();
+
+#if 1
+    gpio_make_output(LCD_RST, 0);
+
+    delay_ms(100);
+
+    gpio_set_output(LCD_RST, 1);
+
+#else
+    gpio_make_output(LCD_RST, 1);
+#endif
+
+    delay_ms(2500);
+
+    gpio_make_output(LCD_COMMAND_DATA, 1);
+    gpio_make_output(LCD_CS, 1);
+    gpio_make_output(LCD_RD, 1);
+    gpio_make_output(LCD_WR, 1);
+    gpio_make_output(LCD_RST, 1);
 
     make_bus_output();
-
-    /* @todo Do an LCD comms test here? */
 
     return 0;
 }
 
-/**
- * @return width in bits, i.e. 8, 9, 12, 16 or 18
- */
-int lcd_get_pixel_width(void)
+/* Make all pins inputs */
+void lcd_deinit(void)
 {
-    int result = 0;
-    SET_CS();
-    send_command(0xF1);
+    gpio_make_input(LCD_COMMAND_DATA);
+    gpio_make_input(LCD_CS);
+    gpio_make_input(LCD_RD);
+    gpio_make_input(LCD_WR);
+    gpio_make_input(LCD_RST);
+
     make_bus_input();
-    result = read_data();
-    CLEAR_CS();
-    make_bus_output();
-    switch (result)
-    {
-    case 0x00:
-        result = 8;
-        break;
-    case 0x01:
-        result = 12;
-        break;
-    case 0x02:
-        result = -16;
-        break;
-    case 0x03:
-        result = 16;
-        break;
-    case 0x04:
-        result = 18;
-        break;
-    case 0x06:
-        result = 9;
-        break;
-    default:
-        result = -1;
-        break;
-    }
-    return result;
 }
 
 /**
- * @param width should be in bits, i.e. 8, 9, 12, 16 or 18
+ * @return width data bus width for pixel data
  */
-void lcd_set_pixel_width(int width)
+enum lcd_pixel_width_t lcd_get_pixel_width(void)
 {
-    SET_CS();
-    send_command(0xF0);
-    switch (width)
-    {
-    case 18:
-        send_data(0x04);
-        break;
-    case 16:
-        send_data(0x03);
-        break;
-    case 12:
-        send_data(0x01);
-        break;
-    case 9:
-        send_data(0x06);
-        break;
-    default:
-    case 8:
-        send_data(0x00);
-        break;
-    }
-    CLEAR_CS();
+    uint8_t data[1];
+    do_command(CMD_GET_DATA_INTERFACE, NULL, 0, data, NUMELTS(data));
+    return data[0];
+}
+
+/**
+ * @param width the new desired bus width (for pixel data only, not commands).
+ */
+void lcd_set_pixel_width(enum lcd_pixel_width_t width)
+{
+    uint8_t data[1] = { width };
+    do_command(CMD_SET_DATA_INTERFACE, NULL, 0, data, NUMELTS(data));
 }
 
 /**
@@ -195,36 +264,20 @@ void lcd_set_pixel_width(int width)
  */
 void lcd_get_mode(struct lcd_mode_t *p_mode)
 {
-    uint8_t temp = 0;
-    SET_CS();
-    send_command(0xB1);
-    make_bus_input();
-    temp = read_data();
-    p_mode->colour_enhancement = (temp & (1U << 4)) ? 1 : 0;
-    p_mode->frc = (temp & (1U << 3)) ? 1 : 0;
-    p_mode->lshift_rising_edge = (temp & (1U << 2)) ? 1 : 0;
-    p_mode->horiz_active_high = (temp & (1U << 1)) ? 1 : 0;
-    p_mode->vert_active_high = (temp & (1U << 0)) ? 1 : 0;
-
-    temp = read_data();
-    p_mode->tft_type = ((temp >> 5) & 0x03);
-
-    temp = read_data();
-    p_mode->horiz_pixels = temp << 8;
-    temp = read_data();
-    p_mode->horiz_pixels |= temp;
-
-    temp = read_data();
-    p_mode->vert_pixels = temp << 8;
-    temp = read_data();
-    p_mode->vert_pixels |= temp;
-
-    temp = read_data();
-    p_mode->even_sequence = (temp >> 3) & 0x07;
-    p_mode->odd_sequence = (temp >> 0) & 0x07;
-
-    CLEAR_CS();
-    make_bus_output();
+    uint8_t data[7];
+    do_command(CMD_GET_PANEL_MODE, NULL, 0, data, NUMELTS(data));
+    p_mode->colour_enhancement = (data[0] & (1U << 4)) ? 1 : 0;
+    p_mode->frc = (data[0] & (1U << 3)) ? 1 : 0;
+    p_mode->lshift_rising_edge = (data[0] & (1U << 2)) ? 1 : 0;
+    p_mode->horiz_active_high = (data[0] & (1U << 1)) ? 1 : 0;
+    p_mode->vert_active_high = (data[0] & (1U << 0)) ? 1 : 0;
+    p_mode->tft_type = ((data[1] >> 5) & 0x03);
+    p_mode->horiz_pixels = data[2] << 8;
+    p_mode->horiz_pixels |= data[3];
+    p_mode->vert_pixels = data[4] << 8;
+    p_mode->vert_pixels |= data[5];
+    p_mode->even_sequence = (data[6] >> 3) & 0x07;
+    p_mode->odd_sequence = (data[6] >> 0) & 0x07;
 }
 
 /**
@@ -232,28 +285,49 @@ void lcd_get_mode(struct lcd_mode_t *p_mode)
  */
 void lcd_get_version(struct lcd_ver_t *p_ver)
 {
-    uint8_t temp;
-    SET_CS();
-    send_command(0xA1); /* Read Data Descriptor Block / DDB */
-    make_bus_input();
+    uint8_t data[5];
+    do_command(CMD_RD_DDB_START, NULL, 0, data, NUMELTS(data));
+    p_ver->supplier_id = data[0] << 8;
+    p_ver->supplier_id |= data[1];
+    p_ver->product_id = data[2];
+    p_ver->revision = data[3];
+    p_ver->check_value = data[4];
+}
 
-    temp = read_data();
-    p_ver->supplier_id = temp << 8;
-    temp = read_data();
-    p_ver->supplier_id |= temp;
+void lcd_get_horiz_period(struct lcd_period_t *p_period)
+{
+    uint8_t data[8];
+    do_command(CMD_GET_HOR_PERIOD, NULL, 0, data, NUMELTS(data));
+    p_period->total = data[0] << 8;
+    p_period->total |= data[1];
+    p_period->display_start = data[2] << 8;
+    p_period->display_start |= data[3];
+    p_period->sync_pulse_width = data[4];
+    p_period->sync_pulse_start = data[5] << 8;
+    p_period->sync_pulse_start |= data[6];
+}
 
-    temp = read_data();
-    p_ver->product_id = temp;
+void lcd_get_vert_period(struct lcd_period_t *p_period)
+{
+    uint8_t data[7];
+    do_command(CMD_GET_VER_PERIOD, NULL, 0, data, NUMELTS(data));
+    p_period->total = data[0] << 8;
+    p_period->total |= data[1];
+    p_period->display_start = data[2] << 8;
+    p_period->display_start |= data[3];
+    p_period->sync_pulse_width = data[4];
+    p_period->sync_pulse_start = data[5] << 8;
+    p_period->sync_pulse_start |= data[6];
+}
 
-    temp = read_data();
-    p_ver->revision = temp;
+void lcd_on(void)
+{
+    do_command(CMD_ON_DISPLAY, NULL, 0, NULL, 0);
+}
 
-    /* Should be 0xFF */
-    temp = read_data();
-    p_ver->check_value = temp;
-
-    CLEAR_CS();
-    make_bus_output();
+void lcd_off(void)
+{
+    do_command(CMD_BLANK_DISPLAY, NULL, 0, NULL, 0);
 }
 
 /**
@@ -298,10 +372,7 @@ void lcd_paint_fill_rectangle(
     set_region(x1, x2, y1, y2);
     while (size--)
     {
-        /* This is for 8 bit mode */
-        send_data(bg >> 16);
-        send_data(bg >> 8);
-        send_data(bg >> 0);
+        write_pixel(bg);
     }
     CLEAR_CS();
 }
@@ -337,15 +408,11 @@ void lcd_paint_mono_rectangle(
     {
         if (temp & 0x80)
         {
-            send_data(fg >> 16);
-            send_data(fg >> 8);
-            send_data(fg >> 0);
+            write_pixel(fg);
         }
         else
         {
-            send_data(bg >> 16);
-            send_data(bg >> 8);
-            send_data(bg >> 0);
+            write_pixel(bg);
         }
         if (count == 7)
         {
@@ -387,13 +454,11 @@ void lcd_paint_colour_rectangle(
     while (size)
     {
         uint32_t pixel = *p_rle_pixels;
-        uint8_t count = pixel >> 24;
+        uint8_t count = (pixel >> 24) & 0xFF;
         size -= count;
         while (count--)
         {
-            send_data(pixel >> 16);
-            send_data(pixel >> 8);
-            send_data(pixel >> 0);
+            write_pixel(pixel);
         }
         p_rle_pixels++;
     }
@@ -412,19 +477,50 @@ static void set_region(
 )
 {
     /* set column */
-    send_command(0x2a);
+    send_command(CMD_SET_COLUMN);
     send_data(x1 >> 8);
     send_data(x1);
     send_data(x2 >> 8);
     send_data(x2);
     /* set row */
-    send_command(0x2b);
+    send_command(CMD_SET_PAGE);
     send_data(y1 >> 8);
     send_data(y1);
     send_data(y2 >> 8);
     send_data(y2);
     /* start write */
-    send_command(0x2c);
+    send_command(CMD_WR_MEMSTART);
+}
+
+static void do_command(
+    uint8_t command,
+    const uint8_t *p_data_out,
+    size_t data_out_len,
+    uint8_t *p_data_in,
+    size_t data_in_len
+)
+{
+    SET_CS();
+    send_command(command);
+    while (data_out_len)
+    {
+        send_data(*p_data_out);
+        data_out_len--;
+        p_data_out++;
+    }
+
+    if (data_in_len)
+    {
+        make_bus_input();
+        while (data_in_len)
+        {
+            *p_data_in = read_data();
+            data_in_len--;
+            p_data_in++;
+        }
+        make_bus_output();
+    }
+    CLEAR_CS();
 }
 
 static void send_command(
@@ -432,16 +528,16 @@ static void send_command(
 )
 {
     SET_COMMAND();
-    send_byte(command);
+    write_byte(command);
     STROBE_WR();
+    SET_DATA();
 }
 
 static void send_data(
     uint8_t data
 )
 {
-    SET_DATA();
-    send_byte(data);
+    write_byte(data);
     STROBE_WR();
 }
 
@@ -450,17 +546,29 @@ static uint8_t read_data(
 )
 {
     uint8_t result = 0;
-    SET_DATA();
     SET_RD();
     busy_sleep(STROBE_READ_DELAY);
     result = gpio_read_inputs(GPIO_PORT_D, 0x03);
     result |= gpio_read_inputs(GPIO_PORT_A, 0xFC);
     CLEAR_RD();
-    busy_sleep(2);
     return result;
 }
 
-static void send_byte(
+/* Requires the data pin to be set appropriately */
+static void write_pixel(uint32_t pixel)
+{
+    uint8_t r = (pixel >> 16) & 0xFF;
+    uint8_t g = (pixel >> 8) & 0xFF;
+    uint8_t b = (pixel >> 0) & 0xFF;
+    write_byte(r);
+    STROBE_WR();
+    write_byte(g);
+    STROBE_WR();
+    write_byte(b);
+    STROBE_WR();
+}
+
+static void write_byte(
     uint8_t byte
 )
 {
@@ -471,27 +579,27 @@ static void send_byte(
 static void make_bus_output(void)
 {
     /* 8-bit data bus */
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_D, 0), 0);
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_D, 1), 0);
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 2), 0);
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 3), 0);
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 4), 0);
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 5), 0);
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 6), 0);
-    gpio_make_output(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 7), 0);
+    gpio_make_output(LCD_DATA0, 1);
+    gpio_make_output(LCD_DATA1, 1);
+    gpio_make_output(LCD_DATA2, 1);
+    gpio_make_output(LCD_DATA3, 1);
+    gpio_make_output(LCD_DATA4, 1);
+    gpio_make_output(LCD_DATA5, 1);
+    gpio_make_output(LCD_DATA6, 1);
+    gpio_make_output(LCD_DATA7, 1);
 }
 
 static void make_bus_input(void)
 {
     /* 8-bit data bus */
-    gpio_make_input(GPIO_MAKE_IO_PIN(GPIO_PORT_D, 0));
-    gpio_make_input(GPIO_MAKE_IO_PIN(GPIO_PORT_D, 1));
-    gpio_make_input(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 2));
-    gpio_make_input(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 3));
-    gpio_make_input(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 4));
-    gpio_make_input(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 5));
-    gpio_make_input(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 6));
-    gpio_make_input(GPIO_MAKE_IO_PIN(GPIO_PORT_A, 7));
+    gpio_make_input(LCD_DATA0);
+    gpio_make_input(LCD_DATA1);
+    gpio_make_input(LCD_DATA2);
+    gpio_make_input(LCD_DATA3);
+    gpio_make_input(LCD_DATA4);
+    gpio_make_input(LCD_DATA5);
+    gpio_make_input(LCD_DATA6);
+    gpio_make_input(LCD_DATA7);
 }
 
 /**************************************************

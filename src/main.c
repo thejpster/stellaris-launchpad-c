@@ -69,8 +69,8 @@
 * Defines
 ***************************************************/
 
-/* A nice pause (for busy_sleep) */
-#define DELAY (CLOCK_RATE / 64) /* = 220ms */
+/* A nice pause (for delay_ms) */
+#define DELAY 1000
 
 #define IN_0 GPIO_MAKE_IO_PIN(GPIO_PORT_D, 6) /* Speed input */
 #define IN_1 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 0) /* Tacho input */
@@ -85,8 +85,12 @@
 /* The rate at which get_counter() ticks in Hz */
 #define TICK_RATE (CLOCK_RATE / 64)
 
+#define TICKS_PER_MS (TICK_RATE / 1000)
+
 /* Number of counter ticks elapsed before we declare speed to be zero. */
 #define MAX_PERIOD TICK_RATE /* One second */
+
+#define TIMER_TICKS_TO_MS(timer_ticks) ((unsigned int) ((timer_ticks) / TICKS_PER_MS))
 
 /**************************************************
 * Data Types
@@ -159,17 +163,15 @@ static volatile bool g_start = false;
 static volatile waveform_t speedo = { .last_seen = 0, .period = STALLED };
 static volatile waveform_t tacho  = { .last_seen = 0, .period = STALLED };
 
+static const uint32_t colours[] = { MAKE_COLOUR(0xFF, 00, 00), MAKE_COLOUR(0, 0xFF, 0), MAKE_COLOUR(0, 0, 0xFF), MAKE_COLOUR(0xFF, 0xFF, 0), MAKE_COLOUR(0, 0xFF, 0xFF), MAKE_COLOUR(0xFF, 0, 0xFF), MAKE_COLOUR(0xFF, 0XFF, 0xFF), MAKE_COLOUR(0, 0, 0) };
+static size_t colour_index = 0;
+
 /**************************************************
 * Public Functions
 ***************************************************/
 
 int main(void)
 {
-    int pixel_width;
-    struct lcd_ver_t ver;
-    struct lcd_mode_t mode;
-    uint32_t old_char_count;
-
     /* Set system clock to CLOCK_RATE */
     set_clock();
 
@@ -187,7 +189,7 @@ int main(void)
     if (res != 0)
     {
         /* Warn user UART failed to init */
-        gpio_flash_error(LED_RED, LED_GREEN, DELAY / 4);
+        gpio_flash_error(LED_RED, LED_GREEN, 250);
     }
 
     gpio_make_input(IN_0);
@@ -219,61 +221,60 @@ int main(void)
     timer_enable(TIMER_WIDE_0, TIMER_A);
     timer_enable(TIMER_WIDE_0, TIMER_B);
 
-    PRINTF("Pausing...\n");
+    PRINTF("***********************************\n");
+    PRINTF("* LCD dashboard demo...           *\n");
+    PRINTF("***********************************\n");
 
-    /* Give the board a chance to boot up */
-
-#if 0
-    while(get_counter() < 2000000)
-    {
-
-    }
-#else
-    while(!g_start)
-    {
-
-    }
-    old_char_count = g_char_count;
-#endif
+    PRINTF("LCD Init...\n");
 
     lcd_init();
+    lcd_set_pixel_width(LCD_PIXEL_WIDTH_8);
+    lcd_on();
+
+    PRINTF("LCD Init done\n");
 
     while (1)
     {
         uint32_t then, now;
 
-        lcd_get_version(&ver);
-
-        PRINTF("Supplier=0x%04x, Product=0x%02x, Rev=0x%02x, Chk=0x%02X\n", ver.supplier_id, ver.product_id, ver.revision, ver.check_value);
-
-        lcd_get_mode(&mode);
-
-        PRINTF("colour_enhancement=%c\n", mode.colour_enhancement ? 'Y' : 'N');
-        PRINTF("frc=%c\n", mode.frc ? 'Y' : 'N');
-        PRINTF("lshift_rising_edge=%c\n", mode.lshift_rising_edge ? 'Y' : 'N');
-        PRINTF("horiz_active_high=%c\n", mode.horiz_active_high ? 'Y' : 'N');
-        PRINTF("vert_active_high=%c\n", mode.vert_active_high ? 'Y' : 'N');
-        PRINTF("tft_type=%x\n", mode.tft_type);
-        PRINTF("horiz_pixels=%u\n", mode.horiz_pixels);
-        PRINTF("vert_pixels=%u\n", mode.vert_pixels);
-        PRINTF("even_sequence=%x\n", mode.even_sequence);
-        PRINTF("odd_sequence=%x\n", mode.odd_sequence);
-
-        lcd_get_version(&ver);
-
-        PRINTF("Supplier=0x%04x, Product=0x%02x, Rev=0x%02x, Chk=0x%02X\n", ver.supplier_id, ver.product_id, ver.revision, ver.check_value);
-
-        pixel_width = lcd_get_pixel_width();
-
-        PRINTF("Pixel width is %d\n", pixel_width);
-
-        if (pixel_width != 8)
+        if (1)
         {
-            lcd_set_pixel_width(8);
-            pixel_width = lcd_get_pixel_width();
-            PRINTF("Pixel width is now %d (should be 8!)\n", pixel_width);
+            struct lcd_ver_t ver;
+            lcd_get_version(&ver);
+            PRINTF("Supplier=0x%04x, Product=0x%02x, Rev=0x%02x, Chk=0x%02X\n", ver.supplier_id, ver.product_id, ver.revision, ver.check_value);
         }
 
+        if (1)
+        {
+            enum lcd_pixel_width_t width;
+            width = lcd_get_pixel_width();
+            PRINTF("Pixel width = %u\n", width);
+        }
+
+        if (1)
+        {
+            struct lcd_mode_t mode;
+            lcd_get_mode(&mode);
+            PRINTF("colour_enhancement=%c\n", mode.colour_enhancement ? 'Y' : 'N');
+            PRINTF("frc=%c\n", mode.frc ? 'Y' : 'N');
+            PRINTF("lshift_rising_edge=%c\n", mode.lshift_rising_edge ? 'Y' : 'N');
+            PRINTF("horiz_active_high=%c\n", mode.horiz_active_high ? 'Y' : 'N');
+            PRINTF("vert_active_high=%c\n", mode.vert_active_high ? 'Y' : 'N');
+            PRINTF("tft_type=%x\n", mode.tft_type);
+            PRINTF("horiz_pixels=%u\n", mode.horiz_pixels);
+            PRINTF("vert_pixels=%u\n", mode.vert_pixels);
+            PRINTF("even_sequence=%x\n", mode.even_sequence);
+            PRINTF("odd_sequence=%x\n", mode.odd_sequence);
+        }
+
+        if (1)
+        {
+            struct lcd_period_t period;
+            lcd_get_horiz_period(&period);
+            PRINTF("HT=%u,HPS=%u,HPW=%u,LPS=%u\n", period.total, period.display_start, period.sync_pulse_width, period.sync_pulse_start);
+            lcd_get_vert_period(&period);
+            PRINTF("VT=%u,VPS=%u,VPW=%u,FPS=%u\n", period.total, period.display_start, period.sync_pulse_width, period.sync_pulse_start);
+        }
 
         PRINTF("in=%d%d%d, time=0x%08"PRIx32", or=%"PRIu32", button=%c\n",
                gpio_read_input(IN_0),
@@ -290,27 +291,22 @@ int main(void)
          * square (down left), in time with the RGB led.
          */
 
-        busy_sleep(DELAY);
-
+        PRINTF("LCD start...\n");
         then = get_counter();
         lcd_paint_clear_rectangle(LCD_FIRST_COLUMN, LCD_FIRST_ROW, LCD_LAST_COLUMN, LCD_LAST_ROW);
-        lcd_paint_fill_rectangle(MAKE_COLOUR(0xFF, 0x00, 0x00), LCD_FIRST_COLUMN, 100, LCD_FIRST_ROW, 100);
+        lcd_paint_fill_rectangle(colours[colour_index], LCD_FIRST_COLUMN, LCD_LAST_COLUMN, LCD_FIRST_ROW, LCD_LAST_ROW);
         now = get_counter();
-        PRINTF("LCD took %"PRIu32" 'timer' ticks\n", now - then);
-
-        busy_sleep(DELAY);
-
-        lcd_paint_clear_rectangle(LCD_FIRST_COLUMN, LCD_FIRST_ROW, LCD_LAST_COLUMN, LCD_LAST_ROW);
-
-        lcd_paint_fill_rectangle(MAKE_COLOUR(0x00, 0xFF, 0x00), 100, 200, 0, 100);
-
-        while(g_char_count == old_char_count)
+        PRINTF("LCD took %u ms\n", TIMER_TICKS_TO_MS(now - then));
+        colour_index++;
+        if (colour_index == NUMELTS(colours))
         {
-            
+            colour_index = 0;
         }
 
-        old_char_count = g_char_count;
-
+        then = get_counter();
+        delay_ms(DELAY);
+        now = get_counter();
+        PRINTF("delay %u ms took %u ms\n", DELAY, TIMER_TICKS_TO_MS(now - then));
     }
 
     /* Shouldn't get here */
