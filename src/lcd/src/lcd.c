@@ -45,9 +45,19 @@
 #define STROBE_READ_DELAY 100
 
 /* WR = pin E2 */
-#define STROBE_WR() do { \
+#define STROBE_WR_SLOW() do { \
         gpio_set_output(LCD_WR, 0); \
         gpio_set_output(LCD_WR, 1); \
+    } while(0)
+
+#define STROBE_WR() do { \
+        GPIO_PORTE_DATA_BITS_R[(1<<2)] = 0x00; \
+        GPIO_PORTE_DATA_BITS_R[(1<<2)] = (1<<2); \
+    } while(0)
+
+#define WRITE_BYTE_FAST(b) do { \
+        GPIO_PORTD_DATA_BITS_R[0x03] = b; \
+        GPIO_PORTA_DATA_BITS_R[0xFC] = b; \
     } while(0)
 
 /* RS (or C/D) = pin D3 */
@@ -178,7 +188,7 @@ static void send_command(enum ssd1963_cmd_t command);
 static void send_data(uint8_t data);
 static uint8_t read_data(void);
 static void write_pixel(uint32_t pixel);
-static void write_byte(uint8_t byte);
+static void write_pixel_rgb(uint8_t r, uint8_t g, uint8_t b);
 static void make_bus_output(void);
 static void make_bus_input(void);
 
@@ -394,12 +404,16 @@ void lcd_paint_fill_rectangle(
 )
 {
     size_t size = (1 + x2 - x1) * (1 + y2 - y1);
+    uint8_t r, g, b;
     SET_CS();
     set_region(x1, x2, y1, y2);
     send_command(CMD_WR_MEMSTART);
+    r = (bg >> 16) & 0xFF;    
+    g = (bg >> 8) & 0xFF;    
+    b = (bg >> 0) & 0xFF;    
     while (size--)
     {
-        write_pixel(bg);
+        write_pixel_rgb(r, g, b);
     }
     CLEAR_CS();
 }
@@ -484,10 +498,13 @@ void lcd_paint_colour_rectangle(
     {
         uint32_t pixel = *p_rle_pixels;
         uint8_t count = (pixel >> 24) & 0xFF;
+        uint8_t r = (pixel >> 16) & 0xFF;
+        uint8_t g = (pixel >> 8) & 0xFF;
+        uint8_t b = (pixel >> 0) & 0xFF;
         size -= count;
         while (count--)
         {
-            write_pixel(pixel);
+            write_pixel_rgb(r,g,b);
         }
         p_rle_pixels++;
     }
@@ -589,7 +606,7 @@ static void send_command(
 )
 {
     SET_COMMAND();
-    write_byte(command);
+    WRITE_BYTE_FAST(command);
     STROBE_WR();
     SET_DATA();
 }
@@ -598,7 +615,7 @@ static void send_data(
     uint8_t data
 )
 {
-    write_byte(data);
+    WRITE_BYTE_FAST(data);
     STROBE_WR();
 }
 
@@ -624,34 +641,22 @@ static void write_pixel(uint32_t pixel)
     uint8_t r = (pixel >> 16) & 0xFF;
     uint8_t g = (pixel >> 8) & 0xFF;
     uint8_t b = (pixel >> 0) & 0xFF;
-    write_byte(r);
+    WRITE_BYTE_FAST(r);
     STROBE_WR();
-    write_byte(g);
+    WRITE_BYTE_FAST(g);
     STROBE_WR();
-    write_byte(b);
+    WRITE_BYTE_FAST(b);
     STROBE_WR();
 }
 
-static void write_byte(
-    uint8_t byte
-)
+static void write_pixel_rgb(uint8_t r, uint8_t g, uint8_t b)
 {
-#ifdef LCD_DEBUG
-    PRINTF("TX: %c %02x\n", g_command ? 'C' : 'D', byte);
-#endif
-#ifdef FAST_MODE
-    gpio_set_outputs_portd(byte, 0x03);
-    gpio_set_outputs_porta(byte, 0xfc);
-#else
-    gpio_set_output(LCD_DATA0, byte & (1 << 0));
-    gpio_set_output(LCD_DATA1, byte & (1 << 1));
-    gpio_set_output(LCD_DATA2, byte & (1 << 2));
-    gpio_set_output(LCD_DATA3, byte & (1 << 3));
-    gpio_set_output(LCD_DATA4, byte & (1 << 4));
-    gpio_set_output(LCD_DATA5, byte & (1 << 5));
-    gpio_set_output(LCD_DATA6, byte & (1 << 6));
-    gpio_set_output(LCD_DATA7, byte & (1 << 7));
-#endif
+    WRITE_BYTE_FAST(r);
+    STROBE_WR();
+    WRITE_BYTE_FAST(g);
+    STROBE_WR();
+    WRITE_BYTE_FAST(b);
+    STROBE_WR();
 }
 
 static void make_bus_output(void)
