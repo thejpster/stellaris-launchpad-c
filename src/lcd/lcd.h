@@ -127,6 +127,22 @@ struct lcd_period_t
     uint16_t sync_pulse_start;
 };
 
+enum lcd_dbc_mode_t
+{
+    LCD_DBC_MODE_AGGRESSIVE = 3,
+    LCD_DBC_MODE_NORMAL = 2,
+    LCD_DBC_MODE_CONSERVATIVE = 1,
+    LCD_DBC_MODE_OFF = 0
+};
+
+struct lcd_dbc_conf_t
+{
+    bool dbc_manual_brightness;
+    bool transition_effect;
+    enum lcd_dbc_mode_t mode;
+    bool master_enable;
+};
+
 
 /**************************************************
 * Public Data
@@ -194,6 +210,12 @@ extern void lcd_on(void);
 
 extern void lcd_off(void);
 
+extern void lcd_get_dbc_conf(struct lcd_dbc_conf_t *p_dbc);
+
+extern void lcd_set_dbc_conf(struct lcd_dbc_conf_t *p_dbc);
+
+extern void lcd_set_backlight(uint8_t brightness);
+
 /**
  * Paints a solid rectangle to the LCD in black.
  *
@@ -208,6 +230,8 @@ extern void lcd_paint_clear_rectangle(
     lcd_row_t y1,
     lcd_row_t y2
 );
+
+#define lcd_paint_clear_screen() lcd_paint_clear_rectangle(LCD_FIRST_COLUMN, LCD_LAST_COLUMN, LCD_FIRST_ROW, LCD_LAST_ROW)
 
 /**
  * Paints a solid rectangle to the LCD in the given colour.
@@ -253,7 +277,7 @@ extern void lcd_paint_mono_rectangle(
 /**
  * Paints a full-colour rectangle to the LCD. This is useful for graphics but
  * you need 510KB for a full-screen image.
- * 
+ *
  * @param x1 the starting column
  * @param x2 the end column
  * @param y1 the starting row
@@ -267,6 +291,15 @@ extern void lcd_paint_colour_rectangle(
     lcd_row_t y2,
     const uint32_t *p_rle_pixels
 );
+
+extern void lcd_read_color_rectangle(
+    lcd_col_t x1,
+    lcd_col_t x2,
+    lcd_row_t y1,
+    lcd_row_t y2,
+    uint32_t *p_rle_pixels,
+    size_t pixel_len
+    );
 
 #ifdef __cplusplus
 }

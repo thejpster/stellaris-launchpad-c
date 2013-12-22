@@ -22,14 +22,10 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
-* References:
-*
-*     [1] - Stellaris® LM4F121H5QR Microcontroller
-*           Data Sheet
 *****************************************************/
 
-#ifndef MISC_MISC_H_
-#define MISC_MISC_H_
+#ifndef COMMAND_H
+#define COMMAND_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,29 +35,19 @@ extern "C" {
 * Includes
 ***************************************************/
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdio.h>
-#include "misc/lm4f120h5qr.h"
+/* None */
 
 /**************************************************
 * Public Defines
 ***************************************************/
 
-#define NUMELTS(x) ( sizeof(x) / sizeof((x)[0]) )
-
-#define CLEAR_BITS(reg, bits) do { reg &= ~(bits); } while (0)
-
-#define SET_BITS(reg, bits) do { reg |= (bits); } while (0)
-
-#define PRINTF iprintf
+/* None */
 
 /**************************************************
 * Public Data Types
 **************************************************/
 
-typedef volatile unsigned long reg_t;
+/* None */
 
 /**************************************************
 * Public Data
@@ -73,51 +59,15 @@ typedef volatile unsigned long reg_t;
 * Public Function Prototypes
 ***************************************************/
 
-/**
- * Set system clock to a CLOCK_RATE
- */
-extern void set_clock(void);
-
-/**
- * Rough and ready sleep function that just
- * spins in a loop.
- */
-extern void busy_sleep(uint32_t delay);
-
-/**
- * Calibrated (ish) sleep functions.
- */
-void delay_ms(uint32_t delay);
-void delay_us(uint32_t delay);
-
-/**
- * Enable an interrupt. See table 2-9 in [1].
- */
-extern void enable_interrupt(unsigned int interrupt_id);
-
-/**
- * Disable an interrupt. See table 2-9 in [1].
- */
-extern void disable_interrupt(unsigned int interrupt_id);
-
-/*
- * Disable all interrupts.
- *
- * Use this to create interrupt-safe critical sections. Disable interrupts for only
- * the shortest possible period of time.
- */
-#define disable_interrupts() __asm("cpsid i")
-
-/*
- * Enable interrupts again.
- */
-#define enable_interrupts() __asm("cpsie i")
+void command_init(void);
+void command_handle_char(char c);
+void command_handle_chars(const char* p_str, size_t num_chars);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* ndef MISC_MISC_H_ */
+#endif /* ndef COMMAND_H */
 
 /**************************************************
 * End of file

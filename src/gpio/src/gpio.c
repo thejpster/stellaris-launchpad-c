@@ -260,9 +260,44 @@ void gpio_make_output(gpio_io_pin_t pin, int level)
     gpio_port_t port = GPIO_GET_PORT(pin);
     reg_t mask = GPIO_GET_PIN(pin);
     enable_gpio_module(port);
-    register_map[port]->DEN_R |= mask;
+    gpio_force_gpio(pin);
     register_map[port]->DATA[mask] = level ? 0xFF : 0x00;
     register_map[port]->DIR_R |= mask;
+    register_map[port]->DEN_R |= mask;
+}
+
+void gpio_force_gpio(gpio_io_pin_t pin)
+{
+    gpio_port_t port = GPIO_GET_PORT(pin);
+    reg_t mask = GPIO_GET_PIN(pin);
+    register_map[port]->AFSEL_R &= ~mask;
+    switch(mask)
+    {
+    case 0x01:
+        register_map[port]->PCTL_R &= ~(0x07 << 0);
+        break;
+    case 0x02:
+        register_map[port]->PCTL_R &= ~(0x07 << 4);
+        break;
+    case 0x04:
+        register_map[port]->PCTL_R &= ~(0x07 << 8);
+        break;
+    case 0x08:
+        register_map[port]->PCTL_R &= ~(0x07 << 12);
+        break;
+    case 0x10:
+        register_map[port]->PCTL_R &= ~(0x07 << 16);
+        break;
+    case 0x20:
+        register_map[port]->PCTL_R &= ~(0x07 << 20);
+        break;
+    case 0x40:
+        register_map[port]->PCTL_R &= ~(0x07 << 24);
+        break;
+    case 0x80:
+        register_map[port]->PCTL_R &= ~(0x07 << 28);
+        break;
+    }
 }
 
 /*
@@ -284,6 +319,7 @@ void gpio_make_input(gpio_io_pin_t pin)
     }
     register_map[port]->DEN_R |= mask;
     register_map[port]->DIR_R &= ~mask;
+    gpio_force_gpio(pin);
 }
 
 /*

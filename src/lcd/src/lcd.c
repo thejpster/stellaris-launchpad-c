@@ -24,10 +24,15 @@
 *
 *****************************************************/
 
+#define FAST_MODE
+
 /**************************************************
 * Includes
 ***************************************************/
 
+#ifdef LCD_DEBUG
+#include <stdio.h>
+#endif
 #include "misc/misc.h"
 #include "gpio/gpio.h"
 #include "../lcd.h"
@@ -37,22 +42,21 @@
 ***************************************************/
 
 /* Really conservative default */
-#define STROBE_READ_DELAY 10
+#define STROBE_READ_DELAY 100
 
 /* WR = pin E2 */
 #define STROBE_WR() do { \
         gpio_set_output(LCD_WR, 0); \
         gpio_set_output(LCD_WR, 1); \
-        busy_sleep(2); \
     } while(0)
 
 /* RS (or C/D) = pin D3 */
-#define SET_COMMAND()  gpio_set_output(LCD_COMMAND_DATA, 0)
-#define SET_DATA()     gpio_set_output(LCD_COMMAND_DATA, 1)
+#define SET_COMMAND()  do { gpio_set_output(LCD_COMMAND_DATA, 0); g_command = true; } while(0)
+#define SET_DATA()     do { gpio_set_output(LCD_COMMAND_DATA, 1); g_command = false; } while(0)
 
 /* CS = pin D2, active low */
-#define SET_CS()       do { gpio_set_output(LCD_CS, 0); delay_ms(1); } while(0)
-#define CLEAR_CS()     do { gpio_set_output(LCD_CS, 1); delay_ms(1); } while(0)
+#define SET_CS()       gpio_set_output(LCD_CS, 0)
+#define CLEAR_CS()     gpio_set_output(LCD_CS, 1)
 
 /* RD = pin E1, active low */
 #define SET_RD()       gpio_set_output(LCD_RD, 0)
@@ -188,11 +192,13 @@ static void make_bus_input(void);
 * Private Data
 **************************************************/
 
-/* None */
+static bool g_command = false;
 
 /**************************************************
 * Public Functions
 ***************************************************/
+
+#define LCD_RESET
 
 /**
  * Will set up the GPIO for driving the LCD.
@@ -204,18 +210,7 @@ int lcd_init(void)
 {
     lcd_deinit();
 
-#if 1
-    gpio_make_output(LCD_RST, 0);
-
-    delay_ms(100);
-
-    gpio_set_output(LCD_RST, 1);
-
-#else
-    gpio_make_output(LCD_RST, 1);
-#endif
-
-    delay_ms(2500);
+    delay_ms(1000);
 
     gpio_make_output(LCD_COMMAND_DATA, 1);
     gpio_make_output(LCD_CS, 1);
@@ -255,8 +250,8 @@ enum lcd_pixel_width_t lcd_get_pixel_width(void)
  */
 void lcd_set_pixel_width(enum lcd_pixel_width_t width)
 {
-    uint8_t data[1] = { width };
-    do_command(CMD_SET_DATA_INTERFACE, NULL, 0, data, NUMELTS(data));
+    const uint8_t data[1] = { width };
+    do_command(CMD_SET_DATA_INTERFACE, data, NUMELTS(data), NULL, 0);
 }
 
 /**
@@ -330,6 +325,36 @@ void lcd_off(void)
     do_command(CMD_BLANK_DISPLAY, NULL, 0, NULL, 0);
 }
 
+void lcd_get_dbc_conf(struct lcd_dbc_conf_t *p_dbc)
+{
+    uint8_t data[1];
+    do_command(CMD_GET_ABC_DBC_CONF, NULL, 0, data, NUMELTS(data));
+    p_dbc->dbc_manual_brightness = (data[0] >> 6) & 0x01;
+    p_dbc->transition_effect = (data[0] >> 5) & 0x01;
+    p_dbc->mode = (data[0] >> 2) & 0x03;
+    p_dbc->master_enable = (data[0] >> 0) & 0x01;
+}
+
+void lcd_set_dbc_conf(struct lcd_dbc_conf_t *p_dbc)
+{
+    uint8_t data[1] = { 0 };
+    data[0] |= (p_dbc->dbc_manual_brightness << 6);
+    data[0] |= (p_dbc->transition_effect << 5);
+    data[0] |= (p_dbc->mode << 2);
+    data[0] |= (p_dbc->master_enable << 0);
+    do_command(CMD_SET_ABC_DBC_CONF, data, NUMELTS(data), NULL, 0);
+}
+
+void lcd_set_backlight(uint8_t brightness)
+{
+    uint8_t data[6] = { 0 };
+    data[0] = 0x06; /* 0x0e in SSD1963.c example from Microchip, 0x06 from UTFT */
+    data[1] = brightness;
+    data[2] = 0x01; /* PWM enabled */
+    /* Ignore other three fields */
+    do_command(CMD_SET_PWM_CONF, data, NUMELTS(data), NULL, 0);
+}
+
 /**
  * Paints a solid rectangle to the LCD in black.
  *
@@ -347,6 +372,7 @@ void lcd_paint_clear_rectangle(
 {
     SET_CS();
     set_region(x1, x2, y1, y2);
+    send_command(CMD_WR_MEMSTART);
     CLEAR_CS();
 }
 
@@ -370,6 +396,7 @@ void lcd_paint_fill_rectangle(
     size_t size = (1 + x2 - x1) * (1 + y2 - y1);
     SET_CS();
     set_region(x1, x2, y1, y2);
+    send_command(CMD_WR_MEMSTART);
     while (size--)
     {
         write_pixel(bg);
@@ -404,6 +431,7 @@ void lcd_paint_mono_rectangle(
     int count = 0;
     SET_CS();
     set_region(x1, x2, y1, y2);
+    send_command(CMD_WR_MEMSTART);
     while (size--)
     {
         if (temp & 0x80)
@@ -451,6 +479,7 @@ void lcd_paint_colour_rectangle(
     size_t size = (1 + x2 - x1) * (1 + y2 - y1);
     SET_CS();
     set_region(x1, x2, y1, y2);
+    send_command(CMD_WR_MEMSTART);
     while (size)
     {
         uint32_t pixel = *p_rle_pixels;
@@ -461,6 +490,37 @@ void lcd_paint_colour_rectangle(
             write_pixel(pixel);
         }
         p_rle_pixels++;
+    }
+    CLEAR_CS();
+}
+
+void lcd_read_color_rectangle(
+    lcd_col_t x1,
+    lcd_col_t x2,
+    lcd_row_t y1,
+    lcd_row_t y2,
+    uint32_t *p_pixels,
+    size_t pixel_len
+    )
+{
+    size_t size = (1 + x2 - x1) * (1 + y2 - y1);
+    if (size > pixel_len)
+    {
+        size = pixel_len;
+    }
+    SET_CS();
+    set_region(x1, x2, y1, y2);
+    send_command(CMD_RD_MEMSTART);
+    while (size && pixel_len)
+    {
+        uint32_t pixel = 0;
+        pixel = read_data() << 16;
+        pixel |= read_data() << 8;
+        pixel |= read_data();
+        *p_pixels = pixel;
+        size--;
+        pixel_len--;
+        p_pixels++;
     }
     CLEAR_CS();
 }
@@ -488,8 +548,6 @@ static void set_region(
     send_data(y1);
     send_data(y2 >> 8);
     send_data(y2);
-    /* start write */
-    send_command(CMD_WR_MEMSTART);
 }
 
 static void do_command(
@@ -502,11 +560,14 @@ static void do_command(
 {
     SET_CS();
     send_command(command);
-    while (data_out_len)
+    if (data_out_len)
     {
-        send_data(*p_data_out);
-        data_out_len--;
-        p_data_out++;
+        while (data_out_len)
+        {
+            send_data(*p_data_out);
+            data_out_len--;
+            p_data_out++;
+        }
     }
 
     if (data_in_len)
@@ -551,10 +612,13 @@ static uint8_t read_data(
     result = gpio_read_inputs(GPIO_PORT_D, 0x03);
     result |= gpio_read_inputs(GPIO_PORT_A, 0xFC);
     CLEAR_RD();
+#ifdef LCD_DEBUG
+    PRINTF("RX: %c %02x\n", g_command ? 'C' : 'D', result);
+#endif
     return result;
 }
 
-/* Requires the data pin to be set appropriately */
+/* Requires the command/data pin to be set appropriately */
 static void write_pixel(uint32_t pixel)
 {
     uint8_t r = (pixel >> 16) & 0xFF;
@@ -572,8 +636,22 @@ static void write_byte(
     uint8_t byte
 )
 {
+#ifdef LCD_DEBUG
+    PRINTF("TX: %c %02x\n", g_command ? 'C' : 'D', byte);
+#endif
+#ifdef FAST_MODE
     gpio_set_outputs_portd(byte, 0x03);
     gpio_set_outputs_porta(byte, 0xfc);
+#else
+    gpio_set_output(LCD_DATA0, byte & (1 << 0));
+    gpio_set_output(LCD_DATA1, byte & (1 << 1));
+    gpio_set_output(LCD_DATA2, byte & (1 << 2));
+    gpio_set_output(LCD_DATA3, byte & (1 << 3));
+    gpio_set_output(LCD_DATA4, byte & (1 << 4));
+    gpio_set_output(LCD_DATA5, byte & (1 << 5));
+    gpio_set_output(LCD_DATA6, byte & (1 << 6));
+    gpio_set_output(LCD_DATA7, byte & (1 << 7));
+#endif
 }
 
 static void make_bus_output(void)

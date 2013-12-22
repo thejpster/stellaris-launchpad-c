@@ -2,7 +2,7 @@
 *
 * Stellaris Launchpad Example Project
 *
-* Copyright (c) 2012 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2013 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -22,46 +22,39 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
-* References:
+* Circular buffer example from Wikipedia (http://en.wikipedia.org/wiki/Circular_buffer).
+* Keeps one slot open.
 *
-*     [1] - Stellaris® LM4F121H5QR Microcontroller
-*           Data Sheet
 *****************************************************/
-
-#ifndef MISC_MISC_H_
-#define MISC_MISC_H_
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**************************************************
 * Includes
 ***************************************************/
 
+#include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <stddef.h>
-#include <stdio.h>
-#include "misc/lm4f120h5qr.h"
+
+#include "circbuffer/circbuffer.h"
 
 /**************************************************
-* Public Defines
+* Defines
 ***************************************************/
 
-#define NUMELTS(x) ( sizeof(x) / sizeof((x)[0]) )
-
-#define CLEAR_BITS(reg, bits) do { reg &= ~(bits); } while (0)
-
-#define SET_BITS(reg, bits) do { reg |= (bits); } while (0)
-
-#define PRINTF iprintf
+#define INC_AND_WRAP(val, size) (((val) + 1) % (size))
 
 /**************************************************
-* Public Data Types
+* Data Types
 **************************************************/
 
-typedef volatile unsigned long reg_t;
+/* None */
+
+/**************************************************
+* Function Prototypes
+**************************************************/
+
+/* None */
 
 /**************************************************
 * Public Data
@@ -70,54 +63,61 @@ typedef volatile unsigned long reg_t;
 /* None */
 
 /**************************************************
-* Public Function Prototypes
+* Private Data
+**************************************************/
+
+/* None */
+
+/**************************************************
+* Public Functions
 ***************************************************/
 
-/**
- * Set system clock to a CLOCK_RATE
- */
-extern void set_clock(void);
-
-/**
- * Rough and ready sleep function that just
- * spins in a loop.
- */
-extern void busy_sleep(uint32_t delay);
-
-/**
- * Calibrated (ish) sleep functions.
- */
-void delay_ms(uint32_t delay);
-void delay_us(uint32_t delay);
-
-/**
- * Enable an interrupt. See table 2-9 in [1].
- */
-extern void enable_interrupt(unsigned int interrupt_id);
-
-/**
- * Disable an interrupt. See table 2-9 in [1].
- */
-extern void disable_interrupt(unsigned int interrupt_id);
-
 /*
- * Disable all interrupts.
- *
- * Use this to create interrupt-safe critical sections. Disable interrupts for only
- * the shortest possible period of time.
+ * Will be able to store buffer_len-1 characters.
  */
-#define disable_interrupts() __asm("cpsid i")
-
-/*
- * Enable interrupts again.
- */
-#define enable_interrupts() __asm("cpsie i")
-
-#ifdef __cplusplus
+void circbuffer_init(struct circbuffer_t *cb, uint8_t *p_buffer, size_t buffer_len)
+{
+    cb->size  = buffer_len; /* include empty elem */
+    cb->start = 0;
+    cb->end   = 0;
+    cb->elems = p_buffer;
 }
-#endif
 
-#endif /* ndef MISC_MISC_H_ */
+bool circbuffer_isfull(struct circbuffer_t *cb)
+{
+    return INC_AND_WRAP(cb->end, cb->size) == cb->start;
+}
+
+bool circbuffer_isempty(struct circbuffer_t *cb)
+{
+    return (cb->end == cb->start);
+}
+
+/* Write an element, overwriting oldest element if buffer is full. App can
+   choose to avoid the overwrite by checking circbuffer_isfull(). */
+void circbuffer_write(struct circbuffer_t *cb, uint8_t elem)
+{
+    cb->elems[cb->end] = elem;
+    cb->end = INC_AND_WRAP(cb->end, cb->size);
+    if (cb->end == cb->start)
+    {
+        cb->start = INC_AND_WRAP(cb->start, cb->size); /* full, overwrite */
+    }
+}
+
+/* Read oldest element. App must ensure !circbuffer_isempty() first. */
+uint8_t circbuffer_read(struct circbuffer_t *cb)
+{
+    uint8_t elem = cb->elems[cb->start];
+    cb->start = INC_AND_WRAP(cb->start, cb->size);
+    return elem;
+}
+
+/**************************************************
+* Private Functions
+***************************************************/
+
+/* None */
 
 /**************************************************
 * End of file

@@ -45,7 +45,7 @@ env.Replace(LD="%s-gcc" % ARM_TOOL_PREFIX)
 verbose = ARGUMENTS.get('VERBOSE', 0)
 if not verbose:
     env.Replace(CCCOMSTR = "[CC] $SOURCE -> $TARGET")
-    env.Replace(LINKCOMSTR = "[LD] $SOURCE -> $TARGET")
+    env.Replace(LINKCOMSTR = "[LD] $TARGET")
 
 # Builder which uses objcopy to turn the .elf into something we can flash
 strip = Builder(action='%s-objcopy -O binary ${SOURCE} ${TARGET}' % ARM_TOOL_PREFIX)
@@ -58,6 +58,10 @@ env.Append(BUILDERS={'Objdump': objdump})
 # Builder to flash on to Launchpad board
 flash = Builder(action='%s ${SOURCE}' % FLASH_TOOL)
 env.Append(BUILDERS={'Flash': flash})
+
+# Builder which uses size to show segment sizes
+size = Builder(action='%s-size -B -x ${SOURCE}' % ARM_TOOL_PREFIX)
+env.Append(BUILDERS={'Size': size})
 
 # Set some sensible defaults for the Launchpad's processor
 env.Append(CCFLAGS=[
@@ -92,6 +96,8 @@ sources = [
     'gpio/src/gpio.c',
     'uart/src/uart.c',
     'lcd/src/lcd.c',
+    'command/src/command.c',
+    'circbuffer/src/circbuffer.c',
 ]
 
 #env.Append(CCFLAGS=["-DCLOCK_RATE=16000000"])
@@ -104,6 +110,8 @@ Depends(elf, '../basic.ld')
 
 # Creates the raw binary version from the ELF
 bin = env.Strip(target='start.bin', source=elf)
+# Before we create the binary, show how big the ELF is
+Depends(bin, env.Size(source=elf))
 
 # Flashes the raw binary onto the board
 fd = env.Flash(target='flash', source=bin)

@@ -61,8 +61,10 @@
 
 #include "misc/misc.h"
 #include "uart/uart.h"
+#include "circbuffer/circbuffer.h"
 #include "gpio/gpio.h"
 #include "lcd/lcd.h"
+#include "command/command.h"
 #include "timers/timers.h"
 
 /**************************************************
@@ -70,7 +72,7 @@
 ***************************************************/
 
 /* A nice pause (for delay_ms) */
-#define DELAY 1000
+#define DELAY 5000
 
 #define IN_0 GPIO_MAKE_IO_PIN(GPIO_PORT_D, 6) /* Speed input */
 #define IN_1 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 0) /* Tacho input */
@@ -91,6 +93,9 @@
 #define MAX_PERIOD TICK_RATE /* One second */
 
 #define TIMER_TICKS_TO_MS(timer_ticks) ((unsigned int) ((timer_ticks) / TICKS_PER_MS))
+
+/* Size of IRQ to userland ring buffer */
+#define MAX_UART_CHARS 16
 
 /**************************************************
 * Data Types
@@ -146,13 +151,16 @@ static const timer_config_t g_timer_config =
     }
 };
 
+
+static uint8_t g_buffer[MAX_UART_CHARS];
+
+static struct circbuffer_t g_uart_cb;
+
 static volatile uint32_t g_overflow_count;
 
 static volatile uint32_t g_output_rate = 65536;
 
 static volatile uint32_t g_new_output_rate = 0;
-
-static volatile uint32_t g_char_count = 0;
 
 static volatile bool g_out_level = false;
 
@@ -163,9 +171,6 @@ static volatile bool g_start = false;
 static volatile waveform_t speedo = { .last_seen = 0, .period = STALLED };
 static volatile waveform_t tacho  = { .last_seen = 0, .period = STALLED };
 
-static const uint32_t colours[] = { MAKE_COLOUR(0xFF, 00, 00), MAKE_COLOUR(0, 0xFF, 0), MAKE_COLOUR(0, 0, 0xFF), MAKE_COLOUR(0xFF, 0xFF, 0), MAKE_COLOUR(0, 0xFF, 0xFF), MAKE_COLOUR(0xFF, 0, 0xFF), MAKE_COLOUR(0xFF, 0XFF, 0xFF), MAKE_COLOUR(0, 0, 0) };
-static size_t colour_index = 0;
-
 /**************************************************
 * Public Functions
 ***************************************************/
@@ -174,6 +179,13 @@ int main(void)
 {
     /* Set system clock to CLOCK_RATE */
     set_clock();
+
+    /* Ensure LCD pins are inputs */
+    lcd_deinit();
+
+    lcd_init();
+
+    circbuffer_init(&g_uart_cb, g_buffer, NUMELTS(g_buffer));
 
     gpio_enable_peripherals();
 
@@ -191,6 +203,10 @@ int main(void)
         /* Warn user UART failed to init */
         gpio_flash_error(LED_RED, LED_GREEN, 250);
     }
+
+    PRINTF("***********************************\n");
+    PRINTF("* LCD dashboard demo...           *\n");
+    PRINTF("***********************************\n");
 
     gpio_make_input(IN_0);
     gpio_make_input(IN_1);
@@ -221,61 +237,23 @@ int main(void)
     timer_enable(TIMER_WIDE_0, TIMER_A);
     timer_enable(TIMER_WIDE_0, TIMER_B);
 
-    PRINTF("***********************************\n");
-    PRINTF("* LCD dashboard demo...           *\n");
-    PRINTF("***********************************\n");
-
-    PRINTF("LCD Init...\n");
-
-    lcd_init();
-    lcd_set_pixel_width(LCD_PIXEL_WIDTH_8);
-    lcd_on();
-
-    PRINTF("LCD Init done\n");
-
     while (1)
     {
-        uint32_t then, now;
+        uint32_t then, now, diff;
 
-        if (1)
+        then = get_counter();
+        do
         {
-            struct lcd_ver_t ver;
-            lcd_get_version(&ver);
-            PRINTF("Supplier=0x%04x, Product=0x%02x, Rev=0x%02x, Chk=0x%02X\n", ver.supplier_id, ver.product_id, ver.revision, ver.check_value);
-        }
+            now = get_counter();
+            diff = now - then;
+            if (!circbuffer_isempty(&g_uart_cb))
+            {
+                char c = (char) circbuffer_read(&g_uart_cb);
+                command_handle_char(c);
+            }
+        } while(diff < (DELAY * 1000));
 
-        if (1)
-        {
-            enum lcd_pixel_width_t width;
-            width = lcd_get_pixel_width();
-            PRINTF("Pixel width = %u\n", width);
-        }
-
-        if (1)
-        {
-            struct lcd_mode_t mode;
-            lcd_get_mode(&mode);
-            PRINTF("colour_enhancement=%c\n", mode.colour_enhancement ? 'Y' : 'N');
-            PRINTF("frc=%c\n", mode.frc ? 'Y' : 'N');
-            PRINTF("lshift_rising_edge=%c\n", mode.lshift_rising_edge ? 'Y' : 'N');
-            PRINTF("horiz_active_high=%c\n", mode.horiz_active_high ? 'Y' : 'N');
-            PRINTF("vert_active_high=%c\n", mode.vert_active_high ? 'Y' : 'N');
-            PRINTF("tft_type=%x\n", mode.tft_type);
-            PRINTF("horiz_pixels=%u\n", mode.horiz_pixels);
-            PRINTF("vert_pixels=%u\n", mode.vert_pixels);
-            PRINTF("even_sequence=%x\n", mode.even_sequence);
-            PRINTF("odd_sequence=%x\n", mode.odd_sequence);
-        }
-
-        if (1)
-        {
-            struct lcd_period_t period;
-            lcd_get_horiz_period(&period);
-            PRINTF("HT=%u,HPS=%u,HPW=%u,LPS=%u\n", period.total, period.display_start, period.sync_pulse_width, period.sync_pulse_start);
-            lcd_get_vert_period(&period);
-            PRINTF("VT=%u,VPS=%u,VPW=%u,FPS=%u\n", period.total, period.display_start, period.sync_pulse_width, period.sync_pulse_start);
-        }
-
+#if 0
         PRINTF("in=%d%d%d, time=0x%08"PRIx32", or=%"PRIu32", button=%c\n",
                gpio_read_input(IN_0),
                gpio_read_input(IN_1),
@@ -285,28 +263,7 @@ int main(void)
                (g_button_count == 0) ? 'Y' : 'N');
 
         PRINTF("Speedo = %"PRIu32" (0x%08"PRIx32"), Tacho = %"PRIu32" (0x%08"PRIx32")\n", speedo.period, speedo.last_seen, tacho.period, tacho.last_seen);
-
-        /*
-         * We should see RED square (top left), BLUE square (top right), GREEN
-         * square (down left), in time with the RGB led.
-         */
-
-        PRINTF("LCD start...\n");
-        then = get_counter();
-        lcd_paint_clear_rectangle(LCD_FIRST_COLUMN, LCD_FIRST_ROW, LCD_LAST_COLUMN, LCD_LAST_ROW);
-        lcd_paint_fill_rectangle(colours[colour_index], LCD_FIRST_COLUMN, LCD_LAST_COLUMN, LCD_FIRST_ROW, LCD_LAST_ROW);
-        now = get_counter();
-        PRINTF("LCD took %u ms\n", TIMER_TICKS_TO_MS(now - then));
-        colour_index++;
-        if (colour_index == NUMELTS(colours))
-        {
-            colour_index = 0;
-        }
-
-        then = get_counter();
-        delay_ms(DELAY);
-        now = get_counter();
-        PRINTF("delay %u ms took %u ms\n", DELAY, TIMER_TICKS_TO_MS(now - then));
+#endif
     }
 
     /* Shouldn't get here */
@@ -330,6 +287,17 @@ static void uart_chars_received(
     /* Don't do any printf here - we're in an interrupt and we
      * need to get out of it as quickly as possible.
      */
+    while(buffer_size)
+    {
+        if (!circbuffer_isfull(&g_uart_cb))
+        {
+            /* Drop chars if buffer full */
+            circbuffer_write(&g_uart_cb, *buffer);
+        }
+        buffer_size--;
+        buffer++;
+    }
+#if 0
     for (size_t i = 0; i < buffer_size; i++)
     {
         /* Deal with received characters */
@@ -360,6 +328,7 @@ static void uart_chars_received(
         }
         g_char_count++;
     }
+#endif
 }
 
 /**
