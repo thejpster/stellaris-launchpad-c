@@ -33,11 +33,13 @@
 
 #include <ctype.h>
 #include <string.h>
+#include <math.h>
 
 #include "misc/misc.h"
 #include "command/command.h"
 #include "lcd/lcd.h"
 #include "gpio/gpio.h"
+#include "main.h"
 
 /**************************************************
 * Defines
@@ -85,6 +87,8 @@ static int fn_lcdperiod(unsigned int argc, const char* argv[]);
 static int fn_lcddbc(unsigned int argc, const char* argv[]);
 static int fn_lcdrd(unsigned int argc, const char* argv[]);
 static int fn_gpio(unsigned int argc, const char* argv[]);
+static int fn_tacho(unsigned int argc, const char* argv[]);
+static int fn_rpm(unsigned int argc, const char* argv[]);
 
 /**************************************************
 * Public Data
@@ -103,6 +107,8 @@ static const struct command_t g_commands[] = {
     { "lcddbc", fn_lcddbc, "- Gets LCD Dynamic Brightness Control" },
     { "lcdrd", fn_lcdrd, "- Reads framebuffer pixels" },
     { "gpio", fn_gpio, "- Set GPIO" },
+    { "tacho", fn_tacho, "- Set tacho output" },
+    { "rpm", fn_rpm, "- Set tacho output in RPM" },
 };
 
 /**************************************************
@@ -161,6 +167,12 @@ static void process_command(void)
     const char* argv[MAX_ARGS];
     unsigned int argc = 0;
     bool found = false;
+
+    if (!g_buffer_used)
+    {
+        /* Catch LF after a CR silently */
+        return;
+    }
 
     /* If your console is echoing keypresses, you don't need this */
 #ifndef BUFFERED_CONSOLE
@@ -466,14 +478,15 @@ static int fn_gpio(unsigned int argc, const char* argv[])
     else
     {
         gpio_port_t port = argv[1][0] - 'A';
-        uint8_t pin = argv[1][1] - '0';
+        uint8_t pin_no = argv[1][1] - '0';
         char mode = argv[2][0];
+        gpio_io_pin_t pin = GPIO_MAKE_IO_PIN(port, pin_no);
         if (port >= GPIO_NUM_PORTS)
         {
             PRINTF("Bad port\n");
             return 2;
         }
-        if (pin > 7)
+        if (pin_no > 7)
         {
             PRINTF("Bad pin\n");
             return 3;
@@ -481,13 +494,13 @@ static int fn_gpio(unsigned int argc, const char* argv[])
         switch(mode)
         {
         case 'i':
-            gpio_make_input(GPIO_MAKE_IO_PIN(port, pin));
-            PRINTF("%s is %d\n", argv[1], gpio_read_input(GPIO_MAKE_IO_PIN(port, pin)));
+            gpio_make_input(pin);
+            PRINTF("%s (0x%04X) is %d\n", argv[1], pin, gpio_read_input(GPIO_MAKE_IO_PIN(port, pin)));
             break;
         case '0':
         case '1':
-            gpio_make_output(GPIO_MAKE_IO_PIN(port, pin), mode - '0');
-            PRINTF("%s set to %c\n", argv[1], mode);
+            gpio_make_output(pin, mode - '0');
+            PRINTF("%s (0x%04X) set to %d\n", argv[1], pin, mode - '0');
             break;
         default:
             PRINTF("Bad mode\n");
@@ -495,6 +508,56 @@ static int fn_gpio(unsigned int argc, const char* argv[])
         }
         return 0;
     }
+}
+
+static int fn_tacho(unsigned int argc, const char* argv[])
+{
+    int result = 0;
+    /* Sets the tacho output */
+    if (argc != 2)
+    {
+        uint32_t speed = main_read_tacho();
+        PRINTF("Tacho in is %08lx (%lu)\n", speed, speed);
+        speed = main_read_speedo();
+        PRINTF("Speedo in is %08lx (%lu)\n", speed, speed);
+    }
+    else
+    {
+        uint32_t speed = parse_int(argv[1]);
+        PRINTF("Set tacho out to %08lx (%lu)\n", speed, speed);
+        main_set_tacho(speed);
+    }
+    return result;
+}
+
+static int fn_rpm(unsigned int argc, const char* argv[])
+{
+    const double tacho_power = 1.0906;
+    const double tacho_ratio = 1679251179;
+    int result = 0;
+    if (argc != 2)
+    {
+        PRINTF("Give an rpm\n");
+        result = 1;
+    }
+    else
+    {
+        uint32_t rpm = parse_int(argv[1]);
+        uint32_t speed;
+        if (rpm > 0)
+        {
+            double p = pow(rpm, tacho_power);
+            double inter = tacho_ratio / p;
+            speed = (uint32_t) inter;
+        }
+        else
+        {
+            speed = 0;
+        }
+        PRINTF("Set tacho out to %lu rpm, %08lx (%lu)\n", rpm, speed, speed);
+        main_set_tacho(speed);
+    }
+    return result;
 }
 
 /**************************************************

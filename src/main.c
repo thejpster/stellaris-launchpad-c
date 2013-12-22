@@ -270,6 +270,33 @@ int main(void)
     return 0;
 }
 
+void main_set_tacho(uint32_t timer_ticks)
+{
+    PRINTF("Set tacho to %08lx\n", timer_ticks);
+    if (!g_output_rate)
+    {
+        PRINTF("Timer start\n");
+        g_output_rate = timer_ticks;
+        /* Kick it off again as it was stopped */
+        timer_set_interval_load(TIMER_WIDE_0, TIMER_B, g_output_rate);
+    }
+    else
+    {
+        PRINTF("Timer already running\n");
+        g_output_rate = timer_ticks;
+    }
+}
+
+uint32_t main_read_tacho(void)
+{
+    return tacho.period;
+}
+
+uint32_t main_read_speedo(void)
+{
+    return speedo.period;
+}
+
 
 /**************************************************
 * Private Functions
@@ -297,38 +324,6 @@ static void uart_chars_received(
         buffer_size--;
         buffer++;
     }
-#if 0
-    for (size_t i = 0; i < buffer_size; i++)
-    {
-        /* Deal with received characters */
-        char c = buffer[i];
-        if (isdigit((int)c))
-        {
-            g_new_output_rate *= 10;
-            g_new_output_rate += (c - '0');
-        }
-        else if ((c == '\r') || (c == '\n'))
-        {
-            if (!g_output_rate)
-            {
-                /* Kick it off again as it was stopped */
-                timer_set_interval_load(TIMER_WIDE_0, TIMER_B, g_new_output_rate);
-            }
-
-            g_output_rate = g_new_output_rate;
-            g_new_output_rate = 0;
-        }
-        else if (c == 'q')
-        {
-            g_start = true;
-        }
-        else
-        {
-            g_new_output_rate = 0;
-        }
-        g_char_count++;
-    }
-#endif
 }
 
 /**
