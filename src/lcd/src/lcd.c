@@ -45,11 +45,6 @@
 #define STROBE_READ_DELAY 100
 
 /* WR = pin E2 */
-#define STROBE_WR_SLOW() do { \
-        gpio_set_output(LCD_WR, 0); \
-        gpio_set_output(LCD_WR, 1); \
-    } while(0)
-
 #define STROBE_WR() do { \
         GPIO_PORTE_DATA_BITS_R[(1<<2)] = 0x00; \
         GPIO_PORTE_DATA_BITS_R[(1<<2)] = (1<<2); \
@@ -58,6 +53,15 @@
 #define WRITE_BYTE_FAST(b) do { \
         GPIO_PORTD_DATA_BITS_R[0x03] = b; \
         GPIO_PORTA_DATA_BITS_R[0xFC] = b; \
+    } while(0)
+
+#define write_pixel_rgb(r, g, b) do { \
+        WRITE_BYTE_FAST(r); \
+        STROBE_WR(); \
+        WRITE_BYTE_FAST(g); \
+        STROBE_WR(); \
+        WRITE_BYTE_FAST(b); \
+        STROBE_WR(); \
     } while(0)
 
 /* RS (or C/D) = pin D3 */
@@ -187,8 +191,6 @@ static void do_command(enum ssd1963_cmd_t command, const uint8_t *p_data_out, si
 static void send_command(enum ssd1963_cmd_t command);
 static void send_data(uint8_t data);
 static uint8_t read_data(void);
-static void write_pixel(uint32_t pixel);
-static void write_pixel_rgb(uint8_t r, uint8_t g, uint8_t b);
 static void make_bus_output(void);
 static void make_bus_input(void);
 
@@ -224,11 +226,13 @@ int lcd_init(void)
 
     gpio_make_output(LCD_COMMAND_DATA, 1);
     gpio_make_output(LCD_CS, 1);
-    gpio_make_output(LCD_RD, 1);
     gpio_make_output(LCD_WR, 1);
-    gpio_make_output(LCD_RST, 1);
+    //gpio_make_output(LCD_RD, 1);
+    //gpio_make_output(LCD_RST, 1);
 
     make_bus_output();
+
+    lcd_set_pixel_width(LCD_PIXEL_WIDTH_8);
 
     return 0;
 }
@@ -238,9 +242,9 @@ void lcd_deinit(void)
 {
     gpio_make_input(LCD_COMMAND_DATA);
     gpio_make_input(LCD_CS);
-    gpio_make_input(LCD_RD);
     gpio_make_input(LCD_WR);
-    gpio_make_input(LCD_RST);
+    //gpio_make_input(LCD_RD);
+    //gpio_make_input(LCD_RST);
 
     make_bus_input();
 }
@@ -441,31 +445,52 @@ void lcd_paint_mono_rectangle(
 )
 {
     size_t size = (1 + x2 - x1) * (1 + y2 - y1);
-    uint8_t temp = *p_pixels;
-    int count = 0;
+    uint8_t f_r, f_g, f_b;
+    uint8_t b_r, b_g, b_b;
+    size_t bytes = size / 8;
+    size_t remainder = size - (bytes * 8);
+
+    f_r = (fg >> 16) & 0xFF;
+    f_g = (fg >> 8) & 0xFF;
+    f_b = (fg >> 0) & 0xFF;
+    b_r = (bg >> 16) & 0xFF;
+    b_g = (bg >> 8) & 0xFF;
+    b_b = (bg >> 0) & 0xFF;
+
     SET_CS();
     set_region(x1, x2, y1, y2);
     send_command(CMD_WR_MEMSTART);
-    while (size--)
+    while(bytes--)
     {
-        if (temp & 0x80)
+        uint8_t temp = *p_pixels;
+        p_pixels++;
+        for(uint8_t bit = 0; bit < 8; bit++)
         {
-            write_pixel(fg);
+            if (temp & 0x80)
+            {
+                write_pixel_rgb(f_r, f_g, f_b);
+            }
+            else
+            {
+                write_pixel_rgb(b_r, b_g, b_b);
+            }
+            temp <<= 1;
         }
-        else
+    }
+    if (remainder)
+    {
+        uint8_t temp = *p_pixels;
+        p_pixels++;
+        for(uint8_t bit = 0; bit < remainder; bit++)
         {
-            write_pixel(bg);
-        }
-        if (count == 7)
-        {
-            /* Clocked out last pixel in this byte */
-            p_pixels++;
-            temp = *p_pixels;
-            count = 0;
-        }
-        else
-        {
-            count += 1;
+            if (temp & 0x80)
+            {
+                write_pixel_rgb(f_r, f_g, f_b);
+            }
+            else
+            {
+                write_pixel_rgb(b_r, b_g, b_b);
+            }
             temp <<= 1;
         }
     }
@@ -474,7 +499,7 @@ void lcd_paint_mono_rectangle(
 
 /**
  * Paints a full-colour rectangle to the LCD. This is useful for graphics but
- * you need 510KB for a full-screen image.
+ * you need up to 510KB for a full-screen image.
  *
  * @param x1 the starting column
  * @param x2 the end column
@@ -633,30 +658,6 @@ static uint8_t read_data(
     PRINTF("RX: %c %02x\n", g_command ? 'C' : 'D', result);
 #endif
     return result;
-}
-
-/* Requires the command/data pin to be set appropriately */
-static void write_pixel(uint32_t pixel)
-{
-    uint8_t r = (pixel >> 16) & 0xFF;
-    uint8_t g = (pixel >> 8) & 0xFF;
-    uint8_t b = (pixel >> 0) & 0xFF;
-    WRITE_BYTE_FAST(r);
-    STROBE_WR();
-    WRITE_BYTE_FAST(g);
-    STROBE_WR();
-    WRITE_BYTE_FAST(b);
-    STROBE_WR();
-}
-
-static void write_pixel_rgb(uint8_t r, uint8_t g, uint8_t b)
-{
-    WRITE_BYTE_FAST(r);
-    STROBE_WR();
-    WRITE_BYTE_FAST(g);
-    STROBE_WR();
-    WRITE_BYTE_FAST(b);
-    STROBE_WR();
 }
 
 static void make_bus_output(void)

@@ -62,7 +62,7 @@ flash = Builder(action="%s ${SOURCE}" % FLASH_TOOL)
 env.Append(BUILDERS={"Flash": flash})
 
 # Builder which uses size to show segment sizes
-size = Builder(action="%s-size -B -x ${SOURCE}" % ARM_TOOL_PREFIX)
+size = Builder(action="echo Max 0x40000 flash, 0x8000 SRAM && %s-size -B -x ${SOURCE}" % ARM_TOOL_PREFIX)
 env.Append(BUILDERS={"Size": size})
 
 # Set some sensible defaults for the Launchpad"s processor
@@ -106,6 +106,9 @@ sources = [
     "lcd/src/lcd.c",
     "command/src/command.c",
     "circbuffer/src/circbuffer.c",
+    "font/src/font.c",
+    "font/src/SevenSeg_XXXL_Num.c",
+    "font/src/BigFont.c",
 ]
 
 # env.Append(CCFLAGS=["-DCLOCK_RATE=16000000"])

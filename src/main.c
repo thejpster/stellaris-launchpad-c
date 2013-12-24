@@ -67,12 +67,11 @@
 #include "command/command.h"
 #include "timers/timers.h"
 
+#include "main.h"
+
 /**************************************************
 * Defines
 ***************************************************/
-
-/* A nice pause (for delay_ms) */
-#define DELAY 5000
 
 #define IN_0 GPIO_MAKE_IO_PIN(GPIO_PORT_D, 6) /* Speed input */
 #define IN_1 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 0) /* Tacho input */
@@ -84,15 +83,11 @@
 /* Magic value which indicates speed is approximately zero */
 #define STALLED 0xFFFFFFFF
 
-/* The rate at which get_counter() ticks in Hz */
-#define TICK_RATE (CLOCK_RATE / 64)
-
-#define TICKS_PER_MS (TICK_RATE / 1000)
-
 /* Number of counter ticks elapsed before we declare speed to be zero. */
 #define MAX_PERIOD TICK_RATE /* One second */
 
-#define TIMER_TICKS_TO_MS(timer_ticks) ((unsigned int) ((timer_ticks) / TICKS_PER_MS))
+/* Delay between screen updates (in timer ticks) */
+#define DELAY_TICKS MS_TO_TIMER_TICKS(250)
 
 /* Size of IRQ to userland ring buffer */
 #define MAX_UART_CHARS 16
@@ -123,8 +118,6 @@ static void timer_interrupt(
     void *p_context,
     uint32_t n_context
 );
-
-static uint32_t get_counter(void);
 
 static void input_interrupt(gpio_io_pin_t pin, void *p_context, uint32_t n_context);
 
@@ -237,33 +230,24 @@ int main(void)
     timer_enable(TIMER_WIDE_0, TIMER_A);
     timer_enable(TIMER_WIDE_0, TIMER_B);
 
+
+    uint32_t then, now, diff;
+    then = get_counter();
     while (1)
     {
-        uint32_t then, now, diff;
-
-        then = get_counter();
-        do
+        now = get_counter();
+        diff = now - then;
+        if (diff > DELAY_TICKS)
         {
-            now = get_counter();
-            diff = now - then;
-            if (!circbuffer_isempty(&g_uart_cb))
-            {
-                char c = (char) circbuffer_read(&g_uart_cb);
-                command_handle_char(c);
-            }
-        } while(diff < (DELAY * 1000));
-
-#if 0
-        PRINTF("in=%d%d%d, time=0x%08"PRIx32", or=%"PRIu32", button=%c\n",
-               gpio_read_input(IN_0),
-               gpio_read_input(IN_1),
-               gpio_read_input(IN_2),
-               get_counter(),
-               g_output_rate,
-               (g_button_count == 0) ? 'Y' : 'N');
-
-        PRINTF("Speedo = %"PRIu32" (0x%08"PRIx32"), Tacho = %"PRIu32" (0x%08"PRIx32")\n", speedo.period, speedo.last_seen, tacho.period, tacho.last_seen);
-#endif
+            /* Do screen update here */
+            //font_draw_number_large(100, 100, count, ' ', LCD_BLUE_DIM, LCD_BLACK);
+            then = now;
+        }
+        if (!circbuffer_isempty(&g_uart_cb))
+        {
+            char c = (char) circbuffer_read(&g_uart_cb);
+            command_handle_char(c);
+        }
     }
 
     /* Shouldn't get here */
@@ -297,6 +281,31 @@ uint32_t main_read_speedo(void)
     return speedo.period;
 }
 
+/**
+ * Helper function that deals with the fact our timer regularly overflows. We count the overflows
+ * and this function returns that count munged with the current timer value.
+ *
+ * It's 32-bit @ 1MHz and so wraps every 71.5 minutes.
+ */
+uint32_t get_counter(void)
+{
+    uint32_t timer_val, overflow_val;
+
+    disable_interrupts();
+    timer_val = timer_get_value(TIMER_WIDE_0, TIMER_A);
+    overflow_val = g_overflow_count;
+    enable_interrupts();
+
+    /*
+     * Chop 6 bits off to make a 1MHz free-running timer @ ~1Mhz. Combine the
+     * 18 bit free-running ~1MHz timer with the overflow counter to produce a
+     * 32-bit value
+     */
+    timer_val >>= 6;
+    timer_val |= (overflow_val << 18);
+
+    return timer_val;
+}
 
 /**************************************************
 * Private Functions
@@ -382,32 +391,6 @@ static void timer_interrupt(
             g_out_level = !g_out_level;
         }
     }
-}
-
-/**
- * Helper function that deals with the fact our timer regularly overflows. We count the overflows
- * and this function returns that count munged with the current timer value.
- *
- * It's 32-bit @ 1MHz and so wraps every 71.5 minutes.
- */
-static uint32_t get_counter(void)
-{
-    uint32_t timer_val, overflow_val;
-
-    disable_interrupts();
-    timer_val = timer_get_value(TIMER_WIDE_0, TIMER_A);
-    overflow_val = g_overflow_count;
-    enable_interrupts();
-
-    /*
-     * Chop 6 bits off to make a 1MHz free-running timer @ ~1Mhz. Combine the
-     * 18 bit free-running ~1MHz timer with the overflow counter to produce a
-     * 32-bit value
-     */
-    timer_val >>= 6;
-    timer_val |= (overflow_val << 18);
-
-    return timer_val;
 }
 
 /*

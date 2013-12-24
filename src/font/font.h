@@ -2,7 +2,7 @@
 *
 * Stellaris Launchpad Example Project
 *
-* Copyright (c) 2012 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2013 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -22,12 +22,12 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
-* Functions in main that need to be called elsewhere (like the command harness)
+* Code for displaying text/numbers on the LCD.
 * 
 *****************************************************/
 
-#ifndef MAIN_H
-#define MAIN_H
+#ifndef FONT_H
+#define FONT_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,20 +37,13 @@ extern "C" {
 * Includes
 ***************************************************/
 
-/* None */
+#include "lcd/lcd.h"
 
 /**************************************************
 * Public Defines
 ***************************************************/
 
-/* The rate at which get_counter() ticks in Hz */
-#define TICK_RATE (CLOCK_RATE / 64)
-
-#define TICKS_PER_MS (TICK_RATE / 1000)
-
-#define TIMER_TICKS_TO_MS(timer_ticks) ((unsigned int) ((timer_ticks) / TICKS_PER_MS))
-
-#define MS_TO_TIMER_TICKS(ms) (((unsigned int) (ms)) * TICKS_PER_MS)
+/* None */
 
 /**************************************************
 * Public Data Types
@@ -62,25 +55,31 @@ extern "C" {
 * Public Data
 **************************************************/
 
-void main_set_tacho(uint32_t timer_ticks);
-
-uint32_t main_read_tacho(void);
-
-uint32_t main_read_speedo(void);
-
-uint32_t get_counter(void);
+/* None */
 
 /**************************************************
 * Public Function Prototypes
 ***************************************************/
 
-/* None */
+void font_draw_number_large(
+    lcd_row_t x, lcd_col_t y,
+    uint16_t number,
+    lcd_colour_t fg,
+    lcd_colour_t bg
+);
+
+void font_draw_text_small(
+    lcd_row_t x, lcd_col_t y,
+    const char* p_message,
+    lcd_colour_t fg,
+    lcd_colour_t bg
+);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* ndef MAIN_H */
+#endif /* ndef FONT_H */
 
 /**************************************************
 * End of file

@@ -52,6 +52,24 @@ extern "C" {
 /* count should also be 0x00..0xFF */
 #define MAKE_RLE_COLOUR(count, r, g, b) ( ((count) << 24) | ((r) << 16) | ((g) << 8) | ((b) << 0) )
 
+/* Colours */
+#define LCD_BLACK       MAKE_COLOUR(0x00, 0x00, 0x00)
+#define LCD_RED         MAKE_COLOUR(0xFF, 0x00, 0x00)
+#define LCD_GREEN       MAKE_COLOUR(0x00, 0xFF, 0x00)
+#define LCD_BLUE        MAKE_COLOUR(0x00, 0x00, 0xFF)
+#define LCD_YELLOW      MAKE_COLOUR(0xFF, 0xFF, 0x00)
+#define LCD_CYAN        MAKE_COLOUR(0x00, 0xFF, 0xFF)
+#define LCD_MAGENTA     MAKE_COLOUR(0xFF, 0x00, 0xFF)
+#define LCD_WHITE       MAKE_COLOUR(0xFF, 0xFF, 0xFF)
+
+#define LCD_RED_DIM     MAKE_COLOUR(0x80, 0x00, 0x00)
+#define LCD_GREEN_DIM   MAKE_COLOUR(0x00, 0x80, 0x00)
+#define LCD_BLUE_DIM    MAKE_COLOUR(0x00, 0x00, 0x80)
+#define LCD_YELLOW_DIM  MAKE_COLOUR(0x80, 0x80, 0x00)
+#define LCD_CYAN_DIM    MAKE_COLOUR(0x00, 0x80, 0x80)
+#define LCD_MAGENTA_DIM MAKE_COLOUR(0x80, 0x00, 0x80)
+#define LCD_GREY        MAKE_COLOUR(0x80, 0x80, 0x80)
+
 /* LCD sizes */
 #define LCD_WIDTH 480
 #define LCD_HEIGHT 272
@@ -95,6 +113,9 @@ enum lcd_pixel_width_t
 
 typedef unsigned int lcd_row_t;
 typedef unsigned int lcd_col_t;
+
+/* Stores NRGB where N is an RLE number of pixels (optional) */
+typedef uint32_t lcd_colour_t;
 
 struct lcd_mode_t
 {
@@ -243,7 +264,7 @@ extern void lcd_paint_clear_rectangle(
  * @param y2 the end row
  */
 extern void lcd_paint_fill_rectangle(
-    uint32_t bg,
+    lcd_colour_t bg,
     lcd_col_t x1,
     lcd_col_t x2,
     lcd_row_t y1,
@@ -265,8 +286,8 @@ extern void lcd_paint_fill_rectangle(
  * @param p_pixels 1bpp data for the given rectangle, length (x2-x1+1)*(y2-y1+1) bits
  */
 extern void lcd_paint_mono_rectangle(
-    uint32_t fg,
-    uint32_t bg,
+    lcd_colour_t fg,
+    lcd_colour_t bg,
     lcd_col_t x1,
     lcd_col_t x2,
     lcd_row_t y1,
@@ -289,7 +310,7 @@ extern void lcd_paint_colour_rectangle(
     lcd_col_t x2,
     lcd_row_t y1,
     lcd_row_t y2,
-    const uint32_t *p_rle_pixels
+    const lcd_colour_t *p_rle_pixels
 );
 
 extern void lcd_read_color_rectangle(
@@ -297,7 +318,7 @@ extern void lcd_read_color_rectangle(
     lcd_col_t x2,
     lcd_row_t y1,
     lcd_row_t y2,
-    uint32_t *p_rle_pixels,
+    lcd_colour_t *p_rle_pixels,
     size_t pixel_len
     );
 

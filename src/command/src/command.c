@@ -39,6 +39,7 @@
 #include "command/command.h"
 #include "lcd/lcd.h"
 #include "gpio/gpio.h"
+#include "font/font.h"
 #include "main.h"
 
 /**************************************************
@@ -52,7 +53,7 @@
 * Data Types
 **************************************************/
 
-typedef int (*command_fn_t)(unsigned int argc, const char* argv[]);
+typedef int (*command_fn_t)(unsigned int argc, char* argv[]);
 
 /**
  * Declares a command that can be called.
@@ -78,17 +79,19 @@ static void beep(void);
 
 static uint32_t parse_int(const char* str);
 
-static int fn_help(unsigned int argc, const char* argv[]);
-static int fn_lcdcol(unsigned int argc, const char* argv[]);
-static int fn_lcdver(unsigned int argc, const char* argv[]);
-static int fn_lcdpx(unsigned int argc, const char* argv[]);
-static int fn_lcdmode(unsigned int argc, const char* argv[]);
-static int fn_lcdperiod(unsigned int argc, const char* argv[]);
-static int fn_lcddbc(unsigned int argc, const char* argv[]);
-static int fn_lcdrd(unsigned int argc, const char* argv[]);
-static int fn_gpio(unsigned int argc, const char* argv[]);
-static int fn_tacho(unsigned int argc, const char* argv[]);
-static int fn_rpm(unsigned int argc, const char* argv[]);
+static int fn_help(unsigned int argc, char* argv[]);
+static int fn_lcdcol(unsigned int argc, char* argv[]);
+static int fn_lcdver(unsigned int argc, char* argv[]);
+static int fn_lcdpx(unsigned int argc, char* argv[]);
+static int fn_lcdmode(unsigned int argc, char* argv[]);
+static int fn_lcdperiod(unsigned int argc, char* argv[]);
+static int fn_lcddbc(unsigned int argc, char* argv[]);
+static int fn_lcdrd(unsigned int argc, char* argv[]);
+static int fn_gpio(unsigned int argc, char* argv[]);
+static int fn_tacho(unsigned int argc, char* argv[]);
+static int fn_rpm(unsigned int argc, char* argv[]);
+static int fn_digits(unsigned int argc, char* argv[]);
+static int fn_text(unsigned int argc, char* argv[]);
 
 /**************************************************
 * Public Data
@@ -109,6 +112,8 @@ static const struct command_t g_commands[] = {
     { "gpio", fn_gpio, "- Set GPIO" },
     { "tacho", fn_tacho, "- Set tacho output" },
     { "rpm", fn_rpm, "- Set tacho output in RPM" },
+    { "digits", fn_digits, "- Draw some large numbers" },
+    { "text", fn_text, "- Draw some text" },
 };
 
 /**************************************************
@@ -164,7 +169,7 @@ void command_handle_chars(const char* p_str, size_t num_chars)
 
 static void process_command(void)
 {
-    const char* argv[MAX_ARGS];
+    char* argv[MAX_ARGS];
     unsigned int argc = 0;
     bool found = false;
 
@@ -293,7 +298,7 @@ static uint32_t parse_int(const char* str)
 
 /* Commands */
 
-static int fn_help(unsigned int argc, const char* argv[])
+static int fn_help(unsigned int argc, char* argv[])
 {
     size_t max_len = 0;
     PRINTF("Command list:\n");
@@ -315,7 +320,7 @@ static int fn_help(unsigned int argc, const char* argv[])
     return 0;
 }
 
-static int fn_lcdcol(unsigned int argc, const char* argv[])
+static int fn_lcdcol(unsigned int argc, char* argv[])
 {
     if (argc < 2)
     {
@@ -354,7 +359,7 @@ static int fn_lcdcol(unsigned int argc, const char* argv[])
     }
 }
 
-static int fn_lcdver(unsigned int argc, const char* argv[])
+static int fn_lcdver(unsigned int argc, char* argv[])
 {
     struct lcd_ver_t ver;
     lcd_get_version(&ver);
@@ -362,7 +367,7 @@ static int fn_lcdver(unsigned int argc, const char* argv[])
     return 0;
 }
 
-static int fn_lcdpx(unsigned int argc, const char* argv[])
+static int fn_lcdpx(unsigned int argc, char* argv[])
 {
     int result = 0;
     if (argc == 1)
@@ -385,7 +390,7 @@ static int fn_lcdpx(unsigned int argc, const char* argv[])
     return result;
 }
 
-static int fn_lcdmode(unsigned int argc, const char* argv[])
+static int fn_lcdmode(unsigned int argc, char* argv[])
 {
     struct lcd_mode_t mode;
     lcd_get_mode(&mode);
@@ -402,7 +407,7 @@ static int fn_lcdmode(unsigned int argc, const char* argv[])
     return 0;
 }
 
-static int fn_lcdperiod(unsigned int argc, const char* argv[])
+static int fn_lcdperiod(unsigned int argc, char* argv[])
 {
     struct lcd_period_t period;
     lcd_get_horiz_period(&period);
@@ -412,7 +417,7 @@ static int fn_lcdperiod(unsigned int argc, const char* argv[])
     return 0;
 }
 
-static int fn_lcddbc(unsigned int argc, const char* argv[])
+static int fn_lcddbc(unsigned int argc, char* argv[])
 {
     struct lcd_dbc_conf_t conf;
     lcd_get_dbc_conf(&conf);
@@ -425,7 +430,7 @@ static int fn_lcddbc(unsigned int argc, const char* argv[])
     return 0;
 }
 
-static int fn_lcdrd(unsigned int argc, const char* argv[])
+static int fn_lcdrd(unsigned int argc, char* argv[])
 {
     lcd_col_t x1 = 0, x2 = 479;
     lcd_row_t y1 = 0, y2 = 271;
@@ -463,7 +468,7 @@ static int fn_lcdrd(unsigned int argc, const char* argv[])
     return 0;
 }
 
-static int fn_gpio(unsigned int argc, const char* argv[])
+static int fn_gpio(unsigned int argc, char* argv[])
 {
     /* portpin i/0/1 */
     /* e.g. E1 0 */
@@ -510,7 +515,7 @@ static int fn_gpio(unsigned int argc, const char* argv[])
     }
 }
 
-static int fn_tacho(unsigned int argc, const char* argv[])
+static int fn_tacho(unsigned int argc, char* argv[])
 {
     int result = 0;
     /* Sets the tacho output */
@@ -530,7 +535,7 @@ static int fn_tacho(unsigned int argc, const char* argv[])
     return result;
 }
 
-static int fn_rpm(unsigned int argc, const char* argv[])
+static int fn_rpm(unsigned int argc, char* argv[])
 {
     const double tacho_power = 1.0906;
     const double tacho_ratio = 1679251179;
@@ -556,6 +561,66 @@ static int fn_rpm(unsigned int argc, const char* argv[])
         }
         PRINTF("Set tacho out to %lu rpm, %08lx (%lu)\n", rpm, speed, speed);
         main_set_tacho(speed);
+    }
+    return result;
+}
+
+static int fn_digits(unsigned int argc, char* argv[])
+{
+    int result = 0;
+    if (argc != 5)
+    {
+        PRINTF("Call %s <x> <y> <colour> <number>\n", argv[0]);
+        PRINTF("\te.g. %s 100 100 0xFFFF00 1234\n", argv[0]);
+        result = 1;
+    }
+    else
+    {
+        uint32_t now, then;
+        lcd_col_t x = parse_int(argv[1]);
+        lcd_row_t y = parse_int(argv[2]);
+        lcd_colour_t col = parse_int(argv[3]);
+        uint16_t number = parse_int(argv[4]);
+        PRINTF("Drawing %u @ %u,%u in %06lx\n", number, x, y, col);
+        then = get_counter();
+        font_draw_number_large(x, y, number, col, LCD_BLACK);
+        now = get_counter();
+        PRINTF("Took %u ms\n", TIMER_TICKS_TO_MS(now - then));
+    }
+    return result;
+}
+
+static int fn_text(unsigned int argc, char* argv[])
+{
+    int result = 0;
+    if (argc < 5)
+    {
+        PRINTF("Call %s <x> <y> <colour> <message>\n", argv[0]);
+        PRINTF("\te.g. %s 100 100 0xFF0000 Hello_world!\n", argv[0]);
+        PRINTF("\tNote: _ are swapped for spaces\n");
+        result = 1;
+    }
+    else
+    {
+        uint32_t now, then;
+        lcd_col_t x = parse_int(argv[1]);
+        lcd_row_t y = parse_int(argv[2]);
+        lcd_colour_t col = parse_int(argv[3]);
+        char* p_message = argv[4];
+        while(*p_message)
+        {
+            if (*p_message == '_')
+            {
+                *p_message = ' ';  
+            }
+            p_message++;
+        }
+        p_message = argv[4];
+        PRINTF("Drawing '%s' @ %u,%u in %06lx\n", p_message, x, y, col);
+        then = get_counter();
+        font_draw_text_small(x, y, p_message, col, LCD_BLACK);
+        now = get_counter();
+        PRINTF("Took %u ms\n", TIMER_TICKS_TO_MS(now - then));
     }
     return result;
 }
