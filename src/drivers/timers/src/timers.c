@@ -36,12 +36,10 @@
 * Includes
 ***************************************************/
 
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
+#include "util/util.h"
 
-#include "misc/misc.h"
-#include "timers/timers.h"
+#include "drivers/misc/misc.h"
+#include "drivers/timers/timers.h"
 
 /**************************************************
 * Defines

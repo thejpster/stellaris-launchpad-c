@@ -37,8 +37,7 @@ extern "C" {
 * Includes
 ***************************************************/
 
-#include <stddef.h>
-#include <unistd.h>
+#include "util/util.h"
 
 /**************************************************
 * Public Defines

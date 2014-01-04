@@ -37,7 +37,7 @@ extern "C" {
 * Includes
 ***************************************************/
 
-#include "lcd/lcd.h"
+#include "drivers/lcd/lcd.h"
 
 /**************************************************
 * Public Defines

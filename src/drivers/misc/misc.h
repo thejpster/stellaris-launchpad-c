@@ -2,7 +2,7 @@
 *
 * Stellaris Launchpad Example Project
 *
-* Copyright (c) 2012 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2012-2014 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -22,6 +22,8 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
+* Chip specific utility functions that don't fit in to any other 'driver'
+* 
 * References:
 *
 *     [1] - Stellaris® LM4F121H5QR Microcontroller
@@ -39,24 +41,14 @@ extern "C" {
 * Includes
 ***************************************************/
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <inttypes.h>
-#include <stddef.h>
-#include <stdio.h>
-#include "misc/lm4f120h5qr.h"
+#include "util/util.h"
+#include "drivers/lm4f120h5qr.h"
 
 /**************************************************
 * Public Defines
 ***************************************************/
 
-#define NUMELTS(x) ( sizeof(x) / sizeof((x)[0]) )
-
-#define CLEAR_BITS(reg, bits) do { reg &= ~(bits); } while (0)
-
-#define SET_BITS(reg, bits) do { reg |= (bits); } while (0)
-
-#define PRINTF iprintf
+/* None */
 
 /**************************************************
 * Public Data Types

@@ -3,7 +3,7 @@
 // Font size    : 16x16 pixels
 // Memory usage : 3044 bytes
 
-#include <stdint.h>
+#include "util/util.h"
 
 const uint8_t BigFont[3044] =
 {

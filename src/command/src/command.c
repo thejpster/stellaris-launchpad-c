@@ -31,15 +31,17 @@
 * Includes
 ***************************************************/
 
+#include "util/util.h"
+
 #include <ctype.h>
-#include <string.h>
 #include <math.h>
 
-#include "misc/misc.h"
+#include "drivers/misc/misc.h"
 #include "command/command.h"
-#include "lcd/lcd.h"
-#include "gpio/gpio.h"
+#include "drivers/lcd/lcd.h"
+#include "drivers/gpio/gpio.h"
 #include "font/font.h"
+
 #include "main.h"
 
 /**************************************************

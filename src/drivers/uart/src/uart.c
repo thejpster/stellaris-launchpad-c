@@ -35,12 +35,10 @@
 * Includes
 ***************************************************/
 
-#include <stddef.h>
-#include <stdint.h>
-#include <string.h>
+#include "util/util.h"
 
-#include "misc/misc.h"
-#include "uart/uart.h"
+#include "drivers/misc/misc.h"
+#include "drivers/uart/uart.h"
 
 /**************************************************
 * Defines

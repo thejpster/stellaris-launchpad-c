@@ -28,8 +28,8 @@
 * Includes
 ***************************************************/
 
-#include "misc/misc.h"
-#include "gpio/gpio.h"
+#include "drivers/misc/misc.h"
+#include "drivers/gpio/gpio.h"
 #include "../lcd.h"
 
 /**************************************************

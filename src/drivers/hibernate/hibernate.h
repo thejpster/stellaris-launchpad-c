@@ -22,10 +22,13 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
+* Handles the Hibernate/RTC functionality of the
+* LM4F120.
+* 
 *****************************************************/
 
-#ifndef CIRCBUFFER_H
-#define CIRCBUFFER_H
+#ifndef HIBERNATE_H_
+#define HIBERNATE_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,7 +38,7 @@ extern "C" {
 * Includes
 ***************************************************/
 
-#include "util/util.h"
+/* None */
 
 /**************************************************
 * Public Defines
@@ -47,14 +50,7 @@ extern "C" {
 * Public Data Types
 **************************************************/
 
-/* Circular buffer object */
-struct circbuffer_t
-{
-    size_t    size;   /* maximum number of elements           */
-    size_t    start;  /* index of oldest element              */
-    size_t    end;    /* index at which to write new element  */
-    uint8_t   *elems;  /* vector of elements                   */
-};
+/* None */
 
 /**************************************************
 * Public Data
@@ -66,17 +62,13 @@ struct circbuffer_t
 * Public Function Prototypes
 ***************************************************/
 
-void circbuffer_init(struct circbuffer_t *cb, uint8_t *p_buffer, size_t buffer_len);
-bool circbuffer_isfull(struct circbuffer_t *cb);
-bool circbuffer_isempty(struct circbuffer_t *cb);
-void circbuffer_write(struct circbuffer_t *cb, uint8_t elem);
-uint8_t circbuffer_read(struct circbuffer_t *cb);
+/* None */
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* ndef CIRCBUFFER_H */
+#endif /* ndef HIBERNATE_H */
 
 /**************************************************
 * End of file

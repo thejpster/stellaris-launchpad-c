@@ -37,8 +37,8 @@ extern "C" {
 * Includes
 ***************************************************/
 
-#include <stdint.h>
-#include "uart/uart.h"
+#include "util/util.h"
+#include "drivers/uart/uart.h"
 
 /**************************************************
 * Public Defines

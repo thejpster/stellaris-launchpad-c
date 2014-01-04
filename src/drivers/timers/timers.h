@@ -39,7 +39,7 @@ extern "C" {
 * Includes
 ***************************************************/
 
-#include <stdbool.h>
+#include "util/util.h"
 
 /**************************************************
 * Public Defines

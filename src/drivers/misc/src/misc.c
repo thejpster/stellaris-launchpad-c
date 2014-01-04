@@ -30,8 +30,8 @@
 * Includes
 ***************************************************/
 
-#include "gpio/gpio.h"
-#include "misc/misc.h"
+#include "drivers/gpio/gpio.h"
+#include "drivers/misc/misc.h"
 
 /**************************************************
 * Defines

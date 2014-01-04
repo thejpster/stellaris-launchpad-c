@@ -2,6 +2,9 @@
 *
 * Stellaris Launchpad Example Project
 *
+* Stubs required to make libc link. See
+* ../../gcc-arm-none-eabi-4_6-2012q4/share/doc/html/libc/Stubs.html#Stubs
+*
 * Copyright (c) 2012 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
@@ -30,21 +33,15 @@
 
 #include "util/util.h"
 
-#include "drivers/lcd/lcd.h"
+#include <sys/stat.h>
+
+#include "drivers/misc/misc.h"
+#include "drivers/gpio/gpio.h"
+#include "drivers/uart/uart.h"
 
 /**************************************************
 * Defines
 ***************************************************/
-
-#define GLYPH_WIDTH_INDEX       0
-#define GLYPH_HEIGH_INDEX       1
-#define GLYPH_OFFSET_INDEX      2
-#define GLYPH_NUM_GLYPHS_INDEX  3
-#define GLYPH_START_INDEX       4
-
-/**************************************************
-* Data Types
-**************************************************/
 
 /* None */
 
@@ -55,64 +52,94 @@
 /* None */
 
 /**************************************************
+* Data Types
+**************************************************/
+
+/* None */
+
+/**************************************************
 * Public Data
 **************************************************/
 
-extern const unsigned char SevenSeg_XXXL_Num[];
-extern const unsigned char BigFont[];
+extern char _heap_bottom;       /* Defined by the linker */
+extern char _heap_top;          /* Defined by the linker */
 
 /**************************************************
 * Private Data
 **************************************************/
 
-#define FONT_FACE_LARGE_WIDTH 64
-#define FONT_FACE_LARGE_HEIGHT 120
+char *heap_end;
 
 /**************************************************
 * Public Functions
 ***************************************************/
 
-void font_draw_number_large(
-    lcd_row_t x, lcd_col_t y,
-    uint16_t number,
-    lcd_colour_t fg,
-    lcd_colour_t bg
-)
+/*
+ * To use the arm-none-eabi C library, we need to supply this
+ */
+void _exit(int status)
 {
-    char buffer[6];
-    char *p = buffer;
-    unsigned int glyph_width = SevenSeg_XXXL_Num[GLYPH_WIDTH_INDEX];
-    unsigned int glyph_height = SevenSeg_XXXL_Num[GLYPH_HEIGH_INDEX];
-    unsigned int glyph_size = (glyph_width/8) * glyph_height;
-    sprintf(buffer, "%u", number);
-    while (*p)
+    while(1)
     {
-        unsigned int offset = *p - SevenSeg_XXXL_Num[GLYPH_OFFSET_INDEX];
-        const uint8_t *p_glyph = &SevenSeg_XXXL_Num[GLYPH_START_INDEX + (glyph_size * offset)];
-        lcd_paint_mono_rectangle(fg, bg, x, x+glyph_width-1, y, y+glyph_height-1, p_glyph);
-        p++;
-        x+=glyph_width;
+        /* Do nothing */
     }
 }
 
-void font_draw_text_small(
-    lcd_row_t x, lcd_col_t y,
-    const char *p_message,
-    lcd_colour_t fg,
-    lcd_colour_t bg
-)
-{
-    unsigned int glyph_width = BigFont[GLYPH_WIDTH_INDEX];
-    unsigned int glyph_height = BigFont[GLYPH_HEIGH_INDEX];
-    unsigned int glyph_size = (glyph_width/8) * glyph_height;
-    while (*p_message)
-    {
-        unsigned int offset = *p_message - BigFont[GLYPH_OFFSET_INDEX];
-        const uint8_t *p_glyph = &BigFont[GLYPH_START_INDEX + (glyph_size * offset)];
-        lcd_paint_mono_rectangle(fg, bg, x, x+glyph_width-1, y, y+glyph_height-1, p_glyph);
-        p_message++;
-        x+=glyph_width;
+/*
+ * To use the arm-none-eabi C library, we need to supply this.
+ * It allows the heap to grow and shrink.
+ */
+caddr_t _sbrk(int incr) {
+    char *prev_heap_end;
+
+    if (heap_end == 0) {
+      heap_end = &_heap_bottom;
     }
+    prev_heap_end = heap_end;
+    if ((heap_end + incr) > &_heap_top) {
+        /* Flash the red LED to signify heap exhaustion */
+        gpio_flash_error(LED_RED, 0, 500);
+    }
+
+    heap_end += incr;
+    return (caddr_t) prev_heap_end;
+}
+
+/*
+ * Allows us to use printf and write to stdout.
+ */
+int _write(int file, char *ptr, int len) {
+	if (file == 1)
+	{
+		uart_write(UART_ID_0, ptr, len);
+	}
+	return len;
+}
+
+int _isatty(int file) {
+	return 1;
+}
+
+int _open(const char *name, int flags, int mode) {
+	return -1;
+}
+
+int _close(int file)
+{
+	return -1;
+}
+
+int _read(int file, char *ptr, int len) {
+	return 0;
+}
+
+int _lseek(int file, int ptr, int dir) {
+	return 0;
+}
+
+int _fstat(int file, struct stat *st) {
+	st->st_mode = S_IFCHR;
+	return 0;
 }
 
 /**************************************************

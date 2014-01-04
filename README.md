@@ -15,7 +15,7 @@ to build and
 
 to program. Connect a serial terminal of your choice to /dev/serial/by-id/usb-Texas* (probably a symlink to /dev/ttyACM0, but it depends on what else you have connected) to view the debug output. Press the buttons to change the colour of the LED.
 
-All source code that is marked "Copyright (c) 2012 theJPster" is subject to the following license:
+All source code that is marked "Copyright (c) 201x theJPster" is subject to the following license:
 
 > Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 > 

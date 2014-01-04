@@ -30,11 +30,11 @@
 * Includes
 ***************************************************/
 
-#include <stdint.h>
+#include "util/util.h"
 
-#include "misc/misc.h"
-#include "gpio/gpio.h"
-#include "gpio/gpio_interrupts.h"
+#include "drivers/misc/misc.h"
+#include "drivers/gpio/gpio.h"
+#include "drivers/gpio/gpio_interrupts.h"
 
 /**************************************************
 * Defines

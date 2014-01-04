@@ -30,11 +30,11 @@
 * Description:  LM4F120H5QR startup code.
 */
 
-#include "uart/uart.h"
-#include "gpio/gpio.h"
-#include "misc/misc.h"
-#include "timers/timer_interrupts.h"
-#include "gpio/gpio_interrupts.h"
+#include "drivers/uart/uart.h"
+#include "drivers/gpio/gpio.h"
+#include "drivers/misc/misc.h"
+#include "drivers/timers/timer_interrupts.h"
+#include "drivers/gpio/gpio_interrupts.h"
 
 //-----------------------------------------------------------------------------
 //                           Functions declarations

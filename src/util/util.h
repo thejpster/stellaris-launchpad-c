@@ -2,7 +2,7 @@
 *
 * Stellaris Launchpad Example Project
 *
-* Copyright (c) 2012 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2014 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -22,10 +22,12 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
+* Utility functions and standard standard libraries.
+* 
 *****************************************************/
 
-#ifndef CIRCBUFFER_H
-#define CIRCBUFFER_H
+#ifndef UTIL_UTIL_H
+#define UTIL_UTIL_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -35,26 +37,34 @@ extern "C" {
 * Includes
 ***************************************************/
 
-#include "util/util.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include <inttypes.h>
+#include <stddef.h>
+#include <string.h>
+#include <stdio.h>
 
 /**************************************************
 * Public Defines
 ***************************************************/
 
-/* None */
+#define NUMELTS(x) ( sizeof(x) / sizeof((x)[0]) )
+
+#define CLEAR_BITS(reg, bits) do { reg &= ~(bits); } while (0)
+
+#define SET_BITS(reg, bits) do { reg |= (bits); } while (0)
+
+#ifdef USE_IPRINTF
+#define PRINTF(...) iprintf(__VA_ARGS__)
+#else
+#define PRINTF(...) printf(__VA_ARGS__)
+#endif
 
 /**************************************************
 * Public Data Types
 **************************************************/
 
-/* Circular buffer object */
-struct circbuffer_t
-{
-    size_t    size;   /* maximum number of elements           */
-    size_t    start;  /* index of oldest element              */
-    size_t    end;    /* index at which to write new element  */
-    uint8_t   *elems;  /* vector of elements                   */
-};
+/* None */
 
 /**************************************************
 * Public Data
@@ -66,17 +76,13 @@ struct circbuffer_t
 * Public Function Prototypes
 ***************************************************/
 
-void circbuffer_init(struct circbuffer_t *cb, uint8_t *p_buffer, size_t buffer_len);
-bool circbuffer_isfull(struct circbuffer_t *cb);
-bool circbuffer_isempty(struct circbuffer_t *cb);
-void circbuffer_write(struct circbuffer_t *cb, uint8_t elem);
-uint8_t circbuffer_read(struct circbuffer_t *cb);
+/* None */
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* ndef CIRCBUFFER_H */
+#endif /* ndef UTIL_UTIL_H */
 
 /**************************************************
 * End of file

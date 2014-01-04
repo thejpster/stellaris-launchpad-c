@@ -3,7 +3,7 @@
 // Font size    : 64x100 pixels
 // Memory usage : 8004 bytes
 
-#include <stdint.h>
+#include "util/util.h"
 
 const uint8_t SevenSeg_XXXL_Num[8004] =
 {

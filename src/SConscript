@@ -101,26 +101,29 @@ env.Append(LIBS = [
 
 sources = [
     "main.c",
-    "misc/src/startup.c",
-    "misc/src/misc.c",
-    "misc/src/libc.c",
-    "timers/src/timers.c",
-    "gpio/src/gpio.c",
-    "uart/src/uart.c",
-    "lcd/src/lcd.c",
-    "command/src/command.c",
     "circbuffer/src/circbuffer.c",
+    "command/src/command.c",
+    "drivers/gpio/src/gpio.c",
+    "drivers/lcd/src/lcd.c",
+    "drivers/misc/src/misc.c",
+    "drivers/timers/src/timers.c",
+    "drivers/uart/src/uart.c",
+    "font/src/BigFont.c",
     "font/src/font.c",
     "font/src/SevenSeg_XXXL_Num.c",
-    "font/src/BigFont.c",
+    "startup/src/libc.c",
+    "startup/src/startup.c",
 ]
 
 # Set the clock rate to 66.67MHz
-# env.Append(CCFLAGS=["-DCLOCK_RATE=16000000"])
-env.Append(CCFLAGS=["-DCLOCK_RATE=66666666"])
+# env.Append(CPPDEFINES={"CLOCK_RATE": 16000000})
+env.Append(CPPDEFINES={"CLOCK_RATE": 66666666})
 
 # We want the LCD tall, not wide.
-env.Append(CCFLAGS=["-DLCD_ROTATE_DISPLAY"])
+env.Append(CPPDEFINES=["LCD_ROTATE_DISPLAY"])
+
+# We want a simpler, smaller, printf
+env.Append(CPPDEFINES=["USE_IPRINTF"])
 
 # Compiles the ELF version of our program
 elf = env.Program(target="start.elf", source=sources, CPPPATH='.')

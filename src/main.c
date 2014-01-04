@@ -52,20 +52,16 @@
 * Includes
 ***************************************************/
 
-#include <stdio.h>
-#include <string.h>
-#include <inttypes.h>
-#include <ctype.h>
-#include <string.h>
-#include <stdlib.h>
+#include "util/util.h"
 
-#include "misc/misc.h"
-#include "uart/uart.h"
+#include "drivers/misc/misc.h"
+#include "drivers/uart/uart.h"
+#include "drivers/gpio/gpio.h"
+#include "drivers/lcd/lcd.h"
+#include "drivers/timers/timers.h"
+
 #include "circbuffer/circbuffer.h"
-#include "gpio/gpio.h"
-#include "lcd/lcd.h"
 #include "command/command.h"
-#include "timers/timers.h"
 
 #include "main.h"
 
