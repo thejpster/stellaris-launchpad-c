@@ -111,6 +111,8 @@ sources = [
     "font/src/BigFont.c",
     "font/src/font.c",
     "font/src/SevenSeg_XXXL_Num.c",
+    "menu/src/menu.c",
+    "menu/src/menu_lexgo_bonus.c",
     "startup/src/libc.c",
     "startup/src/startup.c",
 ]

@@ -37,12 +37,14 @@
 #include <math.h>
 
 #include "drivers/misc/misc.h"
-#include "command/command.h"
 #include "drivers/lcd/lcd.h"
 #include "drivers/gpio/gpio.h"
-#include "font/font.h"
 
+#include "menu/menu_lexgo_bonus.h"
+#include "font/font.h"
 #include "main.h"
+
+#include "command/command.h"
 
 /**************************************************
 * Defines
@@ -90,6 +92,9 @@ static int fn_rpm(unsigned int argc, char* argv[]);
 static int fn_digits(unsigned int argc, char* argv[]);
 static int fn_text(unsigned int argc, char* argv[]);
 static int fn_cal(unsigned int argc, char* argv[]);
+static int fn_menu(unsigned int argc, char* argv[]);
+static int fn_enter(unsigned int argc, char* argv[]);
+static int fn_down(unsigned int argc, char* argv[]);
 
 /**************************************************
 * Public Data
@@ -108,6 +113,9 @@ static const struct command_t g_commands[] = {
     { "digits", fn_digits, "- Draw some large numbers" },
     { "text", fn_text, "- Draw some text" },
     { "cal", fn_cal, "- Calibrate delay loop" },
+    { "menu", fn_menu, "- Open the LCD menu" },
+    { "enter", fn_enter, "- Select the LCD menu item" },
+    { "down", fn_down, "- Go down one item" },
 };
 
 /**************************************************
@@ -538,6 +546,24 @@ static int fn_cal(unsigned int argc, char* argv[])
         PRINTF("Took %u ms\n", TIMER_TICKS_TO_MS(now - then));
     }
     return result;
+}
+
+static int fn_menu(unsigned int argc, char* argv[])
+{
+    menu_lexgo_bonus_init();
+    return 0;
+}
+
+static int fn_enter(unsigned int argc, char* argv[])
+{
+    menu_keypress(MENU_KEYPRESS_ENTER);
+    return 0;
+}
+
+static int fn_down(unsigned int argc, char* argv[])
+{
+    menu_keypress(MENU_KEYPRESS_DOWN);
+    return 0;
 }
 
 /**************************************************

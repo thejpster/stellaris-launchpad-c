@@ -62,6 +62,7 @@
 
 #include "circbuffer/circbuffer.h"
 #include "command/command.h"
+#include "menu/menu.h"
 
 #include "main.h"
 

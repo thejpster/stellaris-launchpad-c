@@ -15,6 +15,10 @@ to build and
 
 to program. Connect a serial terminal of your choice to /dev/serial/by-id/usb-Texas* (probably a symlink to /dev/ttyACM0, but it depends on what else you have connected) to view the debug output. Press the buttons to change the colour of the LED.
 
+All source files should first `#include "util/util.h"`. All header files should compile stand-alone; they will also need to first `#include "util/util.h"` if they use any C99 `stdint.h` types. Only include standard library headers if they aren't already in `util.h`.
+
+As a general rule, Structures and Enumerations are not be typedef'd. This allows the caller to know if they are dealing with a Structure, Enumeration or fundamental type. This matters - structures use `->` or `.` notation and enumerations can be used in a `switch` without a `default` case.
+
 All source code that is marked "Copyright (c) 201x theJPster" is subject to the following license:
 
 > Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
