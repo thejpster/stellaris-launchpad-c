@@ -74,10 +74,17 @@ extern "C" {
 #define LCD_WIDTH 480
 #define LCD_HEIGHT 272
 
+#ifdef LCD_ROTATE_DISPLAY
+#define LCD_FIRST_COLUMN 0
+#define LCD_LAST_COLUMN (LCD_HEIGHT-1)
+#define LCD_FIRST_ROW 0
+#define LCD_LAST_ROW (LCD_WIDTH-1)
+#else
 #define LCD_FIRST_COLUMN 0
 #define LCD_LAST_COLUMN (LCD_WIDTH-1)
 #define LCD_FIRST_ROW 0
 #define LCD_LAST_ROW (LCD_HEIGHT-1)
+#endif
 
 /**************************************************
 * Public Data Types
@@ -139,7 +146,6 @@ struct lcd_ver_t
     uint8_t check_value; /* Should be FF */
 };
 
-
 struct lcd_period_t
 {
     uint16_t total;
@@ -164,6 +170,42 @@ struct lcd_dbc_conf_t
     bool master_enable;
 };
 
+/* All fields power on reset to false */
+struct lcd_address_mode_t
+{
+    /* Controls order pixels written to framebuffer. false = top to bottom,
+       true = bottom to top */
+    bool page_address_order;
+
+    /* Controls order pixels written to framebuffer. false = left to right,
+       true = right to left */
+    bool column_address_order;
+
+    /* Controls order pixels written to framebuffer. If true, swaps both X
+       and Y */
+    bool page_column_address_order;
+
+    /* This bit controls the display panel’s horizontal line refresh order.
+       The image shown on the display panel is unaffected, regardless of the
+       bit setting. */
+    bool line_address_order;
+
+    /* This bit controls the RGB data order transferred from the SSD1961’s
+       frame buffer to the display panel. */
+    bool bgr_order;
+
+    /* This bit controls the display panel’s vertical line data latch order.
+    */
+    bool display_data_latch_data;
+
+    /* This bit flips the image shown on the display panel left to right. No
+       change is made to the frame buffer. */
+    bool flip_horizontal;
+
+    /* This bit flips the image shown on the display panel top to bottom. No
+       change is made to the frame buffer. */
+    bool flip_vertical;
+};
 
 /**************************************************
 * Public Data
@@ -188,7 +230,7 @@ struct lcd_dbc_conf_t
  *
  * DATA00 = D0 (J3.03)
  * DATA01 = D1 (J3.04)
- * DATA02 = A2 (J2.10) // A[2:5] requires resetting from default PORTCTL 0x02 to PORTCTL 0x0
+ * DATA02 = A2 (J2.10)
  * DATA03 = A3 (J2.09)
  * DATA04 = A4 (J2.08)
  * DATA05 = A5 (J1.08)
@@ -223,36 +265,61 @@ extern void lcd_get_mode(struct lcd_mode_t *p_mode);
  */
 extern void lcd_get_version(struct lcd_ver_t *p_ver);
 
+/**
+ * @param p_period Pointer to LCD period structure which will be filled in
+ * with details of horizontal frame sync.
+ */
 extern void lcd_get_horiz_period(struct lcd_period_t *p_period);
 
+/**
+ * @param p_period Pointer to LCD period structure which will be filled in
+ * with details of vertical frame sync.
+ */
 extern void lcd_get_vert_period(struct lcd_period_t *p_period);
 
+/**
+ * Enables LCD display.
+ */
 extern void lcd_on(void);
 
+/**
+ * Disables LCD display.
+ */
 extern void lcd_off(void);
 
+/**
+ * Gets Dynamic Brightness Control settings.
+ * @param p_dbc Pointer to DBC structure which will be filled in.
+ * with details of DBC.
+ */
 extern void lcd_get_dbc_conf(struct lcd_dbc_conf_t *p_dbc);
 
-extern void lcd_set_dbc_conf(struct lcd_dbc_conf_t *p_dbc);
-
-extern void lcd_set_backlight(uint8_t brightness);
+/**
+ * Sets Dynamic Brightness Control settings.
+ * @param p_dbc Pointer to DBC structure which will be read and passed
+ * to LCD.
+ */
+extern void lcd_set_dbc_conf(const struct lcd_dbc_conf_t *p_dbc);
 
 /**
- * Paints a solid rectangle to the LCD in black.
- *
- * @param x1 the starting column
- * @param x2 the end column
- * @param y1 the starting row
- * @param y2 the end row
+ * Gets frame buffer / display mapping (aka 'address mode').
+ * @param p_dbc Pointer to data structure which will be filled in.
+ * with details of mapping.
  */
-extern void lcd_paint_clear_rectangle(
-    lcd_col_t x1,
-    lcd_col_t x2,
-    lcd_row_t y1,
-    lcd_row_t y2
-);
+extern void lcd_get_address_mode(struct lcd_address_mode_t *p_mode);
 
-#define lcd_paint_clear_screen() lcd_paint_clear_rectangle(LCD_FIRST_COLUMN, LCD_LAST_COLUMN, LCD_FIRST_ROW, LCD_LAST_ROW)
+/**
+ * Sets frame buffer / display mapping (aka 'address mode').
+ * @param p_dbc Pointer to data structure which will be read and passed to
+ * LCD.
+ */
+extern void lcd_set_address_mode(const struct lcd_address_mode_t *p_mode);
+
+/**
+ * Sets the LCD backlight brightness.
+ * @param brightness 0xFF is maximum brightness, 0x00 is minimum.
+ */
+extern void lcd_set_backlight(uint8_t brightness);
 
 /**
  * Paints a solid rectangle to the LCD in the given colour.
@@ -272,6 +339,11 @@ extern void lcd_paint_fill_rectangle(
 );
 
 #define lcd_paint_pixel(col, x, y) lcd_paint_fill_rectangle(col, x, x, y, y)
+
+#define lcd_paint_clear_screen() lcd_paint_fill_rectangle( \
+        LCD_BLACK, \
+        LCD_FIRST_COLUMN, LCD_LAST_COLUMN, \
+        LCD_FIRST_ROW, LCD_LAST_ROW)
 
 /**
  * Paints a mono rectangle to the LCD in the given colours. This is useful for
@@ -320,7 +392,7 @@ extern void lcd_read_color_rectangle(
     lcd_row_t y2,
     lcd_colour_t *p_rle_pixels,
     size_t pixel_len
-    );
+);
 
 #ifdef __cplusplus
 }

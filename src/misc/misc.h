@@ -41,6 +41,7 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <inttypes.h>
 #include <stddef.h>
 #include <stdio.h>
 #include "misc/lm4f120h5qr.h"

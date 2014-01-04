@@ -69,9 +69,11 @@ env.Append(BUILDERS={"Size": size})
 env.Append(CCFLAGS=[
     "-mthumb",
     "-mcpu=cortex-m4",
+    # For some reason, FP code causes the chip to crash
     #"-mfloat-abi=softfp",
-    "-mfloat-abi=soft",
     #"-mfpu=fpv4-sp-d16",
+    "-mfloat-abi=soft",
+    # O2 or higher causes a crash
     "-O1",
     "-g",
     "-Wall",
@@ -85,13 +87,15 @@ env.Append(LINKFLAGS=[
     "-Wl,-T,basic.ld",
     "-mthumb",
     "-mcpu=cortex-m4",
+    # For some reason, FP code causes the chip to crash
     #"-mfloat-abi=softfp",
-    "-mfloat-abi=soft",
     #"-mfpu=fpv4-sp-d16",
+    "-mfloat-abi=soft",
     "-Wl,-Map,bin/start.map"
 ])
 
 env.Append(LIBS = [
+    # libm -> the maths library
     "m",
 ])
 
@@ -111,11 +115,15 @@ sources = [
     "font/src/BigFont.c",
 ]
 
+# Set the clock rate to 66.67MHz
 # env.Append(CCFLAGS=["-DCLOCK_RATE=16000000"])
 env.Append(CCFLAGS=["-DCLOCK_RATE=66666666"])
 
+# We want the LCD tall, not wide.
+env.Append(CCFLAGS=["-DLCD_ROTATE_DISPLAY"])
+
 # Compiles the ELF version of our program
-elf = env.Program(target="start.elf", source=sources)
+elf = env.Program(target="start.elf", source=sources, CPPPATH='.')
 # SCons doesn"t notice the linker script is a dependency, so tell it
 Depends(elf, "../basic.ld")
 

@@ -173,11 +173,6 @@ int main(void)
     /* Set system clock to CLOCK_RATE */
     set_clock();
 
-    /* Ensure LCD pins are inputs */
-    lcd_deinit();
-
-    lcd_init();
-
     circbuffer_init(&g_uart_cb, g_buffer, NUMELTS(g_buffer));
 
     gpio_enable_peripherals();
@@ -200,6 +195,8 @@ int main(void)
     PRINTF("***********************************\n");
     PRINTF("* LCD dashboard demo...           *\n");
     PRINTF("***********************************\n");
+
+    lcd_init();
 
     gpio_make_input(IN_0);
     gpio_make_input(IN_1);

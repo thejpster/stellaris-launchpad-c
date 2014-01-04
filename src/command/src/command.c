@@ -81,17 +81,13 @@ static uint32_t parse_int(const char* str);
 
 static int fn_help(unsigned int argc, char* argv[]);
 static int fn_lcdcol(unsigned int argc, char* argv[]);
-static int fn_lcdver(unsigned int argc, char* argv[]);
 static int fn_lcdpx(unsigned int argc, char* argv[]);
-static int fn_lcdmode(unsigned int argc, char* argv[]);
-static int fn_lcdperiod(unsigned int argc, char* argv[]);
-static int fn_lcddbc(unsigned int argc, char* argv[]);
-static int fn_lcdrd(unsigned int argc, char* argv[]);
 static int fn_gpio(unsigned int argc, char* argv[]);
 static int fn_tacho(unsigned int argc, char* argv[]);
 static int fn_rpm(unsigned int argc, char* argv[]);
 static int fn_digits(unsigned int argc, char* argv[]);
 static int fn_text(unsigned int argc, char* argv[]);
+static int fn_cal(unsigned int argc, char* argv[]);
 
 /**************************************************
 * Public Data
@@ -103,17 +99,13 @@ static size_t g_buffer_used = 0;
 static const struct command_t g_commands[] = {
     { "help", fn_help, "- Prints help" },
     { "lcdcol", fn_lcdcol, "- Paints a rectangle in the given colour" },
-    { "lcdver", fn_lcdver, "- Gets LCD version" },
     { "lcdpx", fn_lcdpx, "- Gets/Sets LCD pixel width" },
-    { "lcdmode", fn_lcdmode, "- Gets LCD mode" },
-    { "lcdperiod", fn_lcdperiod, "- Gets LCD H/V period" },
-    { "lcddbc", fn_lcddbc, "- Gets LCD Dynamic Brightness Control" },
-    { "lcdrd", fn_lcdrd, "- Reads framebuffer pixels" },
     { "gpio", fn_gpio, "- Set GPIO" },
     { "tacho", fn_tacho, "- Set tacho output" },
     { "rpm", fn_rpm, "- Set tacho output in RPM" },
     { "digits", fn_digits, "- Draw some large numbers" },
     { "text", fn_text, "- Draw some text" },
+    { "cal", fn_cal, "- Calibrate delay loop" },
 };
 
 /**************************************************
@@ -322,61 +314,38 @@ static int fn_help(unsigned int argc, char* argv[])
 
 static int fn_lcdcol(unsigned int argc, char* argv[])
 {
-    if (argc < 2)
+    uint32_t colour = 0x00FFFFFF;
+    lcd_col_t x1 = LCD_FIRST_COLUMN, x2 = LCD_LAST_COLUMN;
+    lcd_row_t y1 = LCD_FIRST_ROW, y2 = LCD_LAST_ROW;
+    if (argc >= 2)
     {
-        PRINTF("Not enough arguments\n");
-        PRINTF("Type %s <col> [ <x1> <y2> <x2> <y2> ]\n", argv[0]);
-        return 1;
+        colour = parse_int(argv[1]);
     }
-    else
+    if (argc >= 3)
     {
-        uint32_t colour = 0x00FFFFFF;
-        lcd_col_t x1 = 0, x2 = 479;
-        lcd_row_t y1 = 0, y2 = 271;
-        if (argc >= 2)
-        {
-            colour = parse_int(argv[1]);
-        }
-        if (argc >= 3)
-        {
-            x1 = parse_int(argv[2]);
-        }
-        if (argc >= 4)
-        {
-            y1 = parse_int(argv[3]);
-        }
-        if (argc >= 5)
-        {
-            x2 = parse_int(argv[4]);
-        }
-        if (argc >= 6)
-        {
-            y2 = parse_int(argv[5]);
-        }
-        PRINTF("%d,%d->%d,%d => %06lx\n", x1,y1,x2,y2,colour);
-        lcd_paint_fill_rectangle(colour, x1, x2, y1, y2);
-        return 0;
+        x1 = parse_int(argv[2]);
     }
-}
-
-static int fn_lcdver(unsigned int argc, char* argv[])
-{
-    struct lcd_ver_t ver;
-    lcd_get_version(&ver);
-    PRINTF("Supplier=0x%04x, Product=0x%02x, Rev=0x%02x, Chk=0x%02X\n", ver.supplier_id, ver.product_id, ver.revision, ver.check_value);
+    if (argc >= 4)
+    {
+        y1 = parse_int(argv[3]);
+    }
+    if (argc >= 5)
+    {
+        x2 = parse_int(argv[4]);
+    }
+    if (argc >= 6)
+    {
+        y2 = parse_int(argv[5]);
+    }
+    PRINTF("%d,%d->%d,%d => %06lx\n", x1,y1,x2,y2,colour);
+    lcd_paint_fill_rectangle(colour, x1, x2, y1, y2);
     return 0;
 }
 
 static int fn_lcdpx(unsigned int argc, char* argv[])
 {
     int result = 0;
-    if (argc == 1)
-    {
-        enum lcd_pixel_width_t width;
-        width = lcd_get_pixel_width();
-        PRINTF("Pixel width = %u\n", width);
-    }
-    else if (argc == 2)
+    if (argc == 2)
     {
         enum lcd_pixel_width_t width = parse_int(argv[1]);
         PRINTF("Pixel width = %u\n", width);
@@ -384,88 +353,10 @@ static int fn_lcdpx(unsigned int argc, char* argv[])
     }
     else
     {
-        PRINTF("Takes 0 or 1 arguments\n");
+        PRINTF("Takes 1 argument\n");
         result = 1;
     }
     return result;
-}
-
-static int fn_lcdmode(unsigned int argc, char* argv[])
-{
-    struct lcd_mode_t mode;
-    lcd_get_mode(&mode);
-    PRINTF("colour_enhancement=%c\n", mode.colour_enhancement ? 'Y' : 'N');
-    PRINTF("frc=%c\n", mode.frc ? 'Y' : 'N');
-    PRINTF("lshift_rising_edge=%c\n", mode.lshift_rising_edge ? 'Y' : 'N');
-    PRINTF("horiz_active_high=%c\n", mode.horiz_active_high ? 'Y' : 'N');
-    PRINTF("vert_active_high=%c\n", mode.vert_active_high ? 'Y' : 'N');
-    PRINTF("tft_type=%x\n", mode.tft_type);
-    PRINTF("horiz_pixels=%u\n", mode.horiz_pixels);
-    PRINTF("vert_pixels=%u\n", mode.vert_pixels);
-    PRINTF("even_sequence=%x\n", mode.even_sequence);
-    PRINTF("odd_sequence=%x\n", mode.odd_sequence);
-    return 0;
-}
-
-static int fn_lcdperiod(unsigned int argc, char* argv[])
-{
-    struct lcd_period_t period;
-    lcd_get_horiz_period(&period);
-    PRINTF("HT=%u,HPS=%u,HPW=%u,LPS=%u\n", period.total, period.display_start, period.sync_pulse_width, period.sync_pulse_start);
-    lcd_get_vert_period(&period);
-    PRINTF("VT=%u,VPS=%u,VPW=%u,FPS=%u\n", period.total, period.display_start, period.sync_pulse_width, period.sync_pulse_start);
-    return 0;
-}
-
-static int fn_lcddbc(unsigned int argc, char* argv[])
-{
-    struct lcd_dbc_conf_t conf;
-    lcd_get_dbc_conf(&conf);
-    PRINTF("manual=%u,transition=%u,mode=%d,enable=%u\n",
-           conf.dbc_manual_brightness,
-           conf.transition_effect,
-           conf.mode,
-           conf.master_enable
-          );
-    return 0;
-}
-
-static int fn_lcdrd(unsigned int argc, char* argv[])
-{
-    lcd_col_t x1 = 0, x2 = 479;
-    lcd_row_t y1 = 0, y2 = 271;
-    if (argc >= 2)
-    {
-        x1 = parse_int(argv[1]);
-    }
-    if (argc >= 3)
-    {
-        y1 = parse_int(argv[2]);
-    }
-    if (argc >= 4)
-    {
-        x2 = parse_int(argv[3]);
-    }
-    if (argc >= 5)
-    {
-        y2 = parse_int(argv[4]);
-    }
-    PRINTF("%d,%d->%d,%d =>\n", x1,y1,x2,y2);
-    uint32_t pixel;
-    while((x1 != x2) && (y1 != y2))
-    {
-        pixel = 0xDEADBF;
-        lcd_read_color_rectangle(x1, x2, y1, y2, &pixel, 1);
-        PRINTF("%06lx ", pixel);
-        x1++;
-        if (x1 == x2)
-        {
-            PRINTF("\n");
-            x1 = 0;
-            y1++;
-        }
-    }
-    return 0;
 }
 
 static int fn_gpio(unsigned int argc, char* argv[])
@@ -619,6 +510,28 @@ static int fn_text(unsigned int argc, char* argv[])
         PRINTF("Drawing '%s' @ %u,%u in %06lx\n", p_message, x, y, col);
         then = get_counter();
         font_draw_text_small(x, y, p_message, col, LCD_BLACK);
+        now = get_counter();
+        PRINTF("Took %u ms\n", TIMER_TICKS_TO_MS(now - then));
+    }
+    return result;
+}
+
+static int fn_cal(unsigned int argc, char* argv[])
+{
+    int result = 0;
+    if (argc < 2)
+    {
+        PRINTF("Call %s <delay>\n", argv[0]);
+        result = 1;
+    }
+    else
+    {
+        uint32_t now, then;
+        uint32_t delay;
+        delay = parse_int(argv[1]);
+        PRINTF("Delaying 0x%08" PRIx32 " (%" PRIu32 ") milliseconds\n", delay, delay);
+        then = get_counter();
+        delay_ms(delay);
         now = get_counter();
         PRINTF("Took %u ms\n", TIMER_TICKS_TO_MS(now - then));
     }

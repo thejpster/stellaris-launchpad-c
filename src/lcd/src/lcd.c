@@ -24,15 +24,10 @@
 *
 *****************************************************/
 
-#define FAST_MODE
-
 /**************************************************
 * Includes
 ***************************************************/
 
-#ifdef LCD_DEBUG
-#include <stdio.h>
-#endif
 #include "misc/misc.h"
 #include "gpio/gpio.h"
 #include "../lcd.h"
@@ -44,18 +39,21 @@
 /* Really conservative default */
 #define STROBE_READ_DELAY 100
 
-/* WR = pin E2 */
-#define STROBE_WR() do { \
-        GPIO_PORTE_DATA_BITS_R[(1<<2)] = 0x00; \
-        GPIO_PORTE_DATA_BITS_R[(1<<2)] = (1<<2); \
+#define STROBE_WR() \
+    do { \
+        GPIO_PORTE_DATA_BITS_R[GPIO_GET_PIN(LCD_WR)] = 0x00; \
+        GPIO_PORTE_DATA_BITS_R[GPIO_GET_PIN(LCD_WR)] = \
+            GPIO_GET_PIN(LCD_WR); \
     } while(0)
 
-#define WRITE_BYTE_FAST(b) do { \
+#define WRITE_BYTE_FAST(b) \
+    do { \
         GPIO_PORTD_DATA_BITS_R[0x03] = b; \
         GPIO_PORTA_DATA_BITS_R[0xFC] = b; \
     } while(0)
 
-#define write_pixel_rgb(r, g, b) do { \
+#define WRITE_PIXEL_RGB(r, g, b) \
+    do { \
         WRITE_BYTE_FAST(r); \
         STROBE_WR(); \
         WRITE_BYTE_FAST(g); \
@@ -64,35 +62,31 @@
         STROBE_WR(); \
     } while(0)
 
-/* RS (or C/D) = pin D3 */
-#define SET_COMMAND()  do { gpio_set_output(LCD_COMMAND_DATA, 0); g_command = true; } while(0)
-#define SET_DATA()     do { gpio_set_output(LCD_COMMAND_DATA, 1); g_command = false; } while(0)
+#define SET_COMMAND()  gpio_set_output(LCD_COMMAND_DATA, 0)
+#define SET_DATA()     gpio_set_output(LCD_COMMAND_DATA, 1)
 
-/* CS = pin D2, active low */
 #define SET_CS()       gpio_set_output(LCD_CS, 0)
 #define CLEAR_CS()     gpio_set_output(LCD_CS, 1)
 
-/* RD = pin E1, active low */
 #define SET_RD()       gpio_set_output(LCD_RD, 0)
 #define CLEAR_RD()     gpio_set_output(LCD_RD, 1)
 
-/* RESET = pin E3, active low */
 #define SET_RST()       gpio_set_output(LCD_RST, 0)
 #define CLEAR_RST()     gpio_set_output(LCD_RST, 1)
 
-#define LCD_CS GPIO_MAKE_IO_PIN(GPIO_PORT_D, 2)
-#define LCD_COMMAND_DATA GPIO_MAKE_IO_PIN(GPIO_PORT_D, 3)
-#define LCD_RD GPIO_MAKE_IO_PIN(GPIO_PORT_E, 1)
-#define LCD_WR GPIO_MAKE_IO_PIN(GPIO_PORT_E, 2)
-#define LCD_RST GPIO_MAKE_IO_PIN(GPIO_PORT_E, 3)
-#define LCD_DATA0 GPIO_MAKE_IO_PIN(GPIO_PORT_D, 0)
-#define LCD_DATA1 GPIO_MAKE_IO_PIN(GPIO_PORT_D, 1)
-#define LCD_DATA2 GPIO_MAKE_IO_PIN(GPIO_PORT_A, 2)
-#define LCD_DATA3 GPIO_MAKE_IO_PIN(GPIO_PORT_A, 3)
-#define LCD_DATA4 GPIO_MAKE_IO_PIN(GPIO_PORT_A, 4)
-#define LCD_DATA5 GPIO_MAKE_IO_PIN(GPIO_PORT_A, 5)
-#define LCD_DATA6 GPIO_MAKE_IO_PIN(GPIO_PORT_A, 6)
-#define LCD_DATA7 GPIO_MAKE_IO_PIN(GPIO_PORT_A, 7)
+#define LCD_CS            GPIO_MAKE_IO_PIN(GPIO_PORT_D, 2)
+#define LCD_COMMAND_DATA  GPIO_MAKE_IO_PIN(GPIO_PORT_D, 3)
+/* If you change LCD_WR, change STROBE_WR too */
+#define LCD_WR            GPIO_MAKE_IO_PIN(GPIO_PORT_E, 2)
+/* We don't use LCD_RST or LCD_RD */
+#define LCD_DATA0         GPIO_MAKE_IO_PIN(GPIO_PORT_D, 0)
+#define LCD_DATA1         GPIO_MAKE_IO_PIN(GPIO_PORT_D, 1)
+#define LCD_DATA2         GPIO_MAKE_IO_PIN(GPIO_PORT_A, 2)
+#define LCD_DATA3         GPIO_MAKE_IO_PIN(GPIO_PORT_A, 3)
+#define LCD_DATA4         GPIO_MAKE_IO_PIN(GPIO_PORT_A, 4)
+#define LCD_DATA5         GPIO_MAKE_IO_PIN(GPIO_PORT_A, 5)
+#define LCD_DATA6         GPIO_MAKE_IO_PIN(GPIO_PORT_A, 6)
+#define LCD_DATA7         GPIO_MAKE_IO_PIN(GPIO_PORT_A, 7)
 
 /**************************************************
 * Data Types
@@ -190,7 +184,9 @@ static void set_region(
 static void do_command(enum ssd1963_cmd_t command, const uint8_t *p_data_out, size_t data_out_len, uint8_t *p_data_in, size_t data_in_len);
 static void send_command(enum ssd1963_cmd_t command);
 static void send_data(uint8_t data);
+#ifdef LCD_RD
 static uint8_t read_data(void);
+#endif
 static void make_bus_output(void);
 static void make_bus_input(void);
 
@@ -204,13 +200,11 @@ static void make_bus_input(void);
 * Private Data
 **************************************************/
 
-static bool g_command = false;
+/* None */
 
 /**************************************************
 * Public Functions
 ***************************************************/
-
-#define LCD_RESET
 
 /**
  * Will set up the GPIO for driving the LCD.
@@ -220,19 +214,62 @@ static bool g_command = false;
  */
 int lcd_init(void)
 {
-    lcd_deinit();
+    PRINTF("Wait...\n");
 
-    delay_ms(1000);
+    delay_ms(1500);
+
+    PRINTF("LCD init...\n");
 
     gpio_make_output(LCD_COMMAND_DATA, 1);
     gpio_make_output(LCD_CS, 1);
     gpio_make_output(LCD_WR, 1);
-    //gpio_make_output(LCD_RD, 1);
-    //gpio_make_output(LCD_RST, 1);
-
+#if defined(LCD_RD)
+    gpio_make_output(LCD_RD, 1);
+#endif
+#if defined(LCD_RST)
+    gpio_make_output(LCD_RST, 1);
+#endif
     make_bus_output();
 
     lcd_set_pixel_width(LCD_PIXEL_WIDTH_8);
+
+#ifdef LCD_ROTATE_DISPLAY
+    {
+        const struct lcd_address_mode_t mode = { 
+            /* Swap X and Y */
+            .page_column_address_order = true,
+            /* Correct inversion caused by X/Y swap */
+            .flip_vertical = true
+        };
+        lcd_set_address_mode(&mode);
+    }
+#else
+    {
+        const struct lcd_address_mode_t mode = { 0 };
+        lcd_set_address_mode(&mode);
+    }
+#endif
+
+    lcd_paint_clear_screen();
+
+    lcd_paint_fill_rectangle(LCD_RED,
+        LCD_FIRST_COLUMN, LCD_LAST_COLUMN, 0, 20);
+
+    delay_ms(100);
+
+    lcd_paint_fill_rectangle(LCD_BLUE,
+        LCD_FIRST_COLUMN, LCD_LAST_COLUMN, 20, 40);
+
+    delay_ms(100);
+
+    lcd_paint_fill_rectangle(LCD_GREEN,
+        LCD_FIRST_COLUMN, LCD_LAST_COLUMN, 40, 60);
+
+    delay_ms(100);
+
+    lcd_paint_clear_screen();
+
+    PRINTF("Done!\n");
 
     return 0;
 }
@@ -243,14 +280,18 @@ void lcd_deinit(void)
     gpio_make_input(LCD_COMMAND_DATA);
     gpio_make_input(LCD_CS);
     gpio_make_input(LCD_WR);
-    //gpio_make_input(LCD_RD);
-    //gpio_make_input(LCD_RST);
+#if defined(LCD_RD)
+    gpio_make_input(LCD_RD);
+#endif
+#if defined(LCD_RST)
+    gpio_make_input(LCD_RST);
+#endif
 
     make_bus_input();
 }
 
 /**
- * @return width data bus width for pixel data
+ * @return data bus width for pixel data
  */
 enum lcd_pixel_width_t lcd_get_pixel_width(void)
 {
@@ -276,17 +317,15 @@ void lcd_get_mode(struct lcd_mode_t *p_mode)
     uint8_t data[7];
     do_command(CMD_GET_PANEL_MODE, NULL, 0, data, NUMELTS(data));
     p_mode->colour_enhancement = (data[0] & (1U << 4)) ? 1 : 0;
-    p_mode->frc = (data[0] & (1U << 3)) ? 1 : 0;
+    p_mode->frc =                (data[0] & (1U << 3)) ? 1 : 0;
     p_mode->lshift_rising_edge = (data[0] & (1U << 2)) ? 1 : 0;
-    p_mode->horiz_active_high = (data[0] & (1U << 1)) ? 1 : 0;
-    p_mode->vert_active_high = (data[0] & (1U << 0)) ? 1 : 0;
-    p_mode->tft_type = ((data[1] >> 5) & 0x03);
-    p_mode->horiz_pixels = data[2] << 8;
-    p_mode->horiz_pixels |= data[3];
-    p_mode->vert_pixels = data[4] << 8;
-    p_mode->vert_pixels |= data[5];
-    p_mode->even_sequence = (data[6] >> 3) & 0x07;
-    p_mode->odd_sequence = (data[6] >> 0) & 0x07;
+    p_mode->horiz_active_high =  (data[0] & (1U << 1)) ? 1 : 0;
+    p_mode->vert_active_high =   (data[0] & (1U << 0)) ? 1 : 0;
+    p_mode->tft_type =           (data[1] >> 5) & 0x03;
+    p_mode->horiz_pixels =       (data[2] << 8) | data[3];
+    p_mode->vert_pixels =        (data[4] << 8) | data[5];
+    p_mode->even_sequence =      (data[6] >> 3) & 0x07;
+    p_mode->odd_sequence =       (data[6] >> 0) & 0x07;
 }
 
 /**
@@ -296,10 +335,9 @@ void lcd_get_version(struct lcd_ver_t *p_ver)
 {
     uint8_t data[5];
     do_command(CMD_RD_DDB_START, NULL, 0, data, NUMELTS(data));
-    p_ver->supplier_id = data[0] << 8;
-    p_ver->supplier_id |= data[1];
-    p_ver->product_id = data[2];
-    p_ver->revision = data[3];
+    p_ver->supplier_id = (data[0] << 8) | data[1];
+    p_ver->product_id  = data[2];
+    p_ver->revision    = data[3];
     p_ver->check_value = data[4];
 }
 
@@ -307,26 +345,20 @@ void lcd_get_horiz_period(struct lcd_period_t *p_period)
 {
     uint8_t data[8];
     do_command(CMD_GET_HOR_PERIOD, NULL, 0, data, NUMELTS(data));
-    p_period->total = data[0] << 8;
-    p_period->total |= data[1];
-    p_period->display_start = data[2] << 8;
-    p_period->display_start |= data[3];
+    p_period->total            = (data[0] << 8) | data[1];
+    p_period->display_start    = (data[2] << 8) | data[3];
     p_period->sync_pulse_width = data[4];
-    p_period->sync_pulse_start = data[5] << 8;
-    p_period->sync_pulse_start |= data[6];
+    p_period->sync_pulse_start = (data[5] << 8) | data[6];
 }
 
 void lcd_get_vert_period(struct lcd_period_t *p_period)
 {
     uint8_t data[7];
     do_command(CMD_GET_VER_PERIOD, NULL, 0, data, NUMELTS(data));
-    p_period->total = data[0] << 8;
-    p_period->total |= data[1];
-    p_period->display_start = data[2] << 8;
-    p_period->display_start |= data[3];
+    p_period->total            = (data[0] << 8) | data[1];
+    p_period->display_start    = (data[2] << 8) | data[3];
     p_period->sync_pulse_width = data[4];
-    p_period->sync_pulse_start = data[5] << 8;
-    p_period->sync_pulse_start |= data[6];
+    p_period->sync_pulse_start = (data[5] << 8) | data[6];
 }
 
 void lcd_on(void)
@@ -344,12 +376,12 @@ void lcd_get_dbc_conf(struct lcd_dbc_conf_t *p_dbc)
     uint8_t data[1];
     do_command(CMD_GET_ABC_DBC_CONF, NULL, 0, data, NUMELTS(data));
     p_dbc->dbc_manual_brightness = (data[0] >> 6) & 0x01;
-    p_dbc->transition_effect = (data[0] >> 5) & 0x01;
-    p_dbc->mode = (data[0] >> 2) & 0x03;
-    p_dbc->master_enable = (data[0] >> 0) & 0x01;
+    p_dbc->transition_effect     = (data[0] >> 5) & 0x01;
+    p_dbc->mode                  = (data[0] >> 2) & 0x03;
+    p_dbc->master_enable         = (data[0] >> 0) & 0x01;
 }
 
-void lcd_set_dbc_conf(struct lcd_dbc_conf_t *p_dbc)
+void lcd_set_dbc_conf(const struct lcd_dbc_conf_t *p_dbc)
 {
     uint8_t data[1] = { 0 };
     data[0] |= (p_dbc->dbc_manual_brightness << 6);
@@ -357,6 +389,44 @@ void lcd_set_dbc_conf(struct lcd_dbc_conf_t *p_dbc)
     data[0] |= (p_dbc->mode << 2);
     data[0] |= (p_dbc->master_enable << 0);
     do_command(CMD_SET_ABC_DBC_CONF, data, NUMELTS(data), NULL, 0);
+}
+
+/**
+ * Gets frame buffer / display mapping (aka 'address mode').
+ * @param p_dbc Pointer to data structure which will be filled in.
+ * with details of mapping.
+ */
+void lcd_get_address_mode(struct lcd_address_mode_t *p_mode)
+{
+    uint8_t data[1] = { 0 };
+    do_command(CMD_GET_ADDR_MODE, NULL, 0, data, NUMELTS(data));
+    p_mode->page_address_order        = (data[0] >> 7) & 0x01;
+    p_mode->column_address_order      = (data[0] >> 6) & 0x01;
+    p_mode->page_column_address_order = (data[0] >> 5) & 0x01;
+    p_mode->line_address_order        = (data[0] >> 4) & 0x01;
+    p_mode->bgr_order                 = (data[0] >> 3) & 0x01;
+    p_mode->display_data_latch_data   = (data[0] >> 2) & 0x01;
+    p_mode->flip_horizontal           = (data[0] >> 1) & 0x01;
+    p_mode->flip_vertical             = (data[0] >> 0) & 0x01;
+}
+
+/**
+ * Sets frame buffer / display mapping (aka 'address mode').
+ * @param p_dbc Pointer to data structure which will be read and passed to
+ * LCD.
+ */
+void lcd_set_address_mode(const struct lcd_address_mode_t *p_mode)
+{
+    uint8_t data[1] = { 0 };
+    data[0] |= (p_mode->page_address_order << 7);
+    data[0] |= (p_mode->column_address_order << 6);
+    data[0] |= (p_mode->page_column_address_order << 5);
+    data[0] |= (p_mode->line_address_order << 4);
+    data[0] |= (p_mode->bgr_order << 3);
+    data[0] |= (p_mode->display_data_latch_data << 2);
+    data[0] |= (p_mode->flip_horizontal << 1);
+    data[0] |= (p_mode->flip_vertical << 0);
+    do_command(CMD_SET_ADDR_MODE, data, NUMELTS(data), NULL, 0);
 }
 
 void lcd_set_backlight(uint8_t brightness)
@@ -417,7 +487,7 @@ void lcd_paint_fill_rectangle(
     b = (bg >> 0) & 0xFF;    
     while (size--)
     {
-        write_pixel_rgb(r, g, b);
+        WRITE_PIXEL_RGB(r, g, b);
     }
     CLEAR_CS();
 }
@@ -468,11 +538,11 @@ void lcd_paint_mono_rectangle(
         {
             if (temp & 0x80)
             {
-                write_pixel_rgb(f_r, f_g, f_b);
+                WRITE_PIXEL_RGB(f_r, f_g, f_b);
             }
             else
             {
-                write_pixel_rgb(b_r, b_g, b_b);
+                WRITE_PIXEL_RGB(b_r, b_g, b_b);
             }
             temp <<= 1;
         }
@@ -485,11 +555,11 @@ void lcd_paint_mono_rectangle(
         {
             if (temp & 0x80)
             {
-                write_pixel_rgb(f_r, f_g, f_b);
+                WRITE_PIXEL_RGB(f_r, f_g, f_b);
             }
             else
             {
-                write_pixel_rgb(b_r, b_g, b_b);
+                WRITE_PIXEL_RGB(b_r, b_g, b_b);
             }
             temp <<= 1;
         }
@@ -529,13 +599,14 @@ void lcd_paint_colour_rectangle(
         size -= count;
         while (count--)
         {
-            write_pixel_rgb(r,g,b);
+            WRITE_PIXEL_RGB(r,g,b);
         }
         p_rle_pixels++;
     }
     CLEAR_CS();
 }
 
+#ifdef LCD_RD
 void lcd_read_color_rectangle(
     lcd_col_t x1,
     lcd_col_t x2,
@@ -566,6 +637,7 @@ void lcd_read_color_rectangle(
     }
     CLEAR_CS();
 }
+#endif
 
 /**************************************************
 * svate Functions
@@ -578,6 +650,14 @@ static void set_region(
     lcd_row_t y2
 )
 {
+#ifdef LCD_ROTATE_DISPLAY
+    lcd_col_t temp1 = x1;
+    lcd_col_t temp2 = x2;
+    x1 = y1;
+    x2 = y2;
+    y1 = temp1;
+    y2 = temp2;
+#endif    
     /* set column */
     send_command(CMD_SET_COLUMN);
     send_data(x1 >> 8);
@@ -612,6 +692,7 @@ static void do_command(
         }
     }
 
+#ifdef LCD_RD
     if (data_in_len)
     {
         make_bus_input();
@@ -623,6 +704,8 @@ static void do_command(
         }
         make_bus_output();
     }
+#endif
+
     CLEAR_CS();
 }
 
@@ -644,6 +727,7 @@ static void send_data(
     STROBE_WR();
 }
 
+#ifdef LCD_RD
 static uint8_t read_data(
     void
 )
@@ -654,11 +738,9 @@ static uint8_t read_data(
     result = gpio_read_inputs(GPIO_PORT_D, 0x03);
     result |= gpio_read_inputs(GPIO_PORT_A, 0xFC);
     CLEAR_RD();
-#ifdef LCD_DEBUG
-    PRINTF("RX: %c %02x\n", g_command ? 'C' : 'D', result);
-#endif
     return result;
 }
+#endif
 
 static void make_bus_output(void)
 {

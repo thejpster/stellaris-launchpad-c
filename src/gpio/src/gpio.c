@@ -452,7 +452,11 @@ static void enable_gpio_module(gpio_port_t port)
     if ((SYSCTL_RCGCGPIO_R & mask) == 0)
     {
         SYSCTL_RCGCGPIO_R |= mask;
-        busy_sleep(10);
+        /* Wait for module to settle */
+        while((SYSCTL_PRGPIO_R & mask) == 0)
+        {
+            __asm("");
+        }
     }
 }
 

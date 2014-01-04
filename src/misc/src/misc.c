@@ -37,7 +37,13 @@
 * Defines
 ***************************************************/
 
-#define SLEEP_LOOPS_PER_MS 4740
+#if CLOCK_RATE == 66666666
+#define SLEEP_LOOPS_PER_MS 6042UL
+#elif CLOCK_RATE == 16000000
+#define SLEEP_LOOPS_PER_MS 1450UL
+#else
+#error CLOCK_RATE not valid
+#endif
 
 /**************************************************
 * Function Prototypes
@@ -137,7 +143,6 @@ void set_clock(void)
     /* Switch to PLL */
     CLEAR_BITS(rcc, SYSCTL_RCC_BYPASS);
     SYSCTL_RCC_R = rcc;
-
 #endif
 }
 
@@ -148,11 +153,20 @@ void busy_sleep(uint32_t delay)
 {
     while(delay--)
     {
-        /* Stop this loop being optimised away */
-        __asm("");
+        __asm("nop");
+        __asm("nop");
+        __asm("nop");
+        __asm("nop");
+        __asm("nop");
+        __asm("nop");
+        __asm("nop");
+        __asm("nop");
     }
 }
 
+/*
+ * Changing compiler optimisations might throw these out of whack.
+ */
 void delay_ms(uint32_t delay)
 {
     busy_sleep(delay * SLEEP_LOOPS_PER_MS);
