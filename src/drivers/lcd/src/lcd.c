@@ -440,27 +440,6 @@ void lcd_set_backlight(uint8_t brightness)
 }
 
 /**
- * Paints a solid rectangle to the LCD in black.
- *
- * @param x1 the starting column
- * @param x2 the end column
- * @param y1 the starting row
- * @param y2 the end row
- */
-void lcd_paint_clear_rectangle(
-    lcd_col_t x1,
-    lcd_col_t x2,
-    lcd_row_t y1,
-    lcd_row_t y2
-)
-{
-    SET_CS();
-    set_region(x1, x2, y1, y2);
-    send_command(CMD_WR_MEMSTART);
-    CLEAR_CS();
-}
-
-/**
  * Paints a solid rectangle to the LCD in the given colour.
  *
  * @param bg the RGB colour for all the pixels

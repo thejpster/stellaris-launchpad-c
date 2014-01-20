@@ -37,7 +37,7 @@
 ***************************************************/
 
 #define GLYPH_WIDTH_INDEX       0
-#define GLYPH_HEIGH_INDEX       1
+#define GLYPH_HEIGHT_INDEX      1
 #define GLYPH_OFFSET_INDEX      2
 #define GLYPH_NUM_GLYPHS_INDEX  3
 #define GLYPH_START_INDEX       4
@@ -75,22 +75,32 @@ extern const unsigned char BigFont[];
 void font_draw_number_large(
     lcd_row_t x, lcd_col_t y,
     uint16_t number,
+    unsigned int pad_width,
     lcd_colour_t fg,
     lcd_colour_t bg
 )
 {
     char buffer[6];
-    char *p = buffer;
+    char *p;
+    int len;
     unsigned int glyph_width = SevenSeg_XXXL_Num[GLYPH_WIDTH_INDEX];
-    unsigned int glyph_height = SevenSeg_XXXL_Num[GLYPH_HEIGH_INDEX];
+    unsigned int glyph_height = SevenSeg_XXXL_Num[GLYPH_HEIGHT_INDEX];
     unsigned int glyph_size = (glyph_width/8) * glyph_height;
-    sprintf(buffer, "%u", number);
-    while (*p)
+    len = sprintf(buffer, "%u", number);
+    while(pad_width > len)
+    {
+        lcd_paint_fill_rectangle(bg, x, x+glyph_width-1, y, y+glyph_height-1);
+        x+=glyph_width;
+        pad_width--;
+    }
+    p = buffer;
+    while (len)
     {
         unsigned int offset = *p - SevenSeg_XXXL_Num[GLYPH_OFFSET_INDEX];
         const uint8_t *p_glyph = &SevenSeg_XXXL_Num[GLYPH_START_INDEX + (glyph_size * offset)];
         lcd_paint_mono_rectangle(fg, bg, x, x+glyph_width-1, y, y+glyph_height-1, p_glyph);
         p++;
+        len--;
         x+=glyph_width;
     }
 }
@@ -103,7 +113,7 @@ void font_draw_text_small(
 )
 {
     unsigned int glyph_width = BigFont[GLYPH_WIDTH_INDEX];
-    unsigned int glyph_height = BigFont[GLYPH_HEIGH_INDEX];
+    unsigned int glyph_height = BigFont[GLYPH_HEIGHT_INDEX];
     unsigned int glyph_size = (glyph_width/8) * glyph_height;
     while (*p_message)
     {

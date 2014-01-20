@@ -42,6 +42,7 @@
 
 #include "menu/menu_lexgo_bonus.h"
 #include "font/font.h"
+#include "clocks/clocks.h"
 #include "main.h"
 
 #include "command/command.h"
@@ -88,6 +89,7 @@ static int fn_lcdcol(unsigned int argc, char* argv[]);
 static int fn_lcdpx(unsigned int argc, char* argv[]);
 static int fn_gpio(unsigned int argc, char* argv[]);
 static int fn_tacho(unsigned int argc, char* argv[]);
+static int fn_clocks(unsigned int argc, char* argv[]);
 static int fn_rpm(unsigned int argc, char* argv[]);
 static int fn_digits(unsigned int argc, char* argv[]);
 static int fn_text(unsigned int argc, char* argv[]);
@@ -95,6 +97,8 @@ static int fn_cal(unsigned int argc, char* argv[]);
 static int fn_menu(unsigned int argc, char* argv[]);
 static int fn_enter(unsigned int argc, char* argv[]);
 static int fn_down(unsigned int argc, char* argv[]);
+static int fn_short(unsigned int argc, char* argv[]);
+static int fn_long(unsigned int argc, char* argv[]);
 
 /**************************************************
 * Public Data
@@ -109,6 +113,7 @@ static const struct command_t g_commands[] = {
     { "lcdpx", fn_lcdpx, "- Gets/Sets LCD pixel width" },
     { "gpio", fn_gpio, "- Set GPIO" },
     { "tacho", fn_tacho, "- Set tacho output" },
+    { "clocks", fn_clocks, "- Display clocks" },
     { "rpm", fn_rpm, "- Set tacho output in RPM" },
     { "digits", fn_digits, "- Draw some large numbers" },
     { "text", fn_text, "- Draw some text" },
@@ -116,6 +121,8 @@ static const struct command_t g_commands[] = {
     { "menu", fn_menu, "- Open the LCD menu" },
     { "enter", fn_enter, "- Select the LCD menu item" },
     { "down", fn_down, "- Go down one item" },
+    { "short", fn_short, "- Fake short press" },
+    { "long", fn_long, "- Fake long press" },
 };
 
 /**************************************************
@@ -418,20 +425,32 @@ static int fn_gpio(unsigned int argc, char* argv[])
 
 static int fn_tacho(unsigned int argc, char* argv[])
 {
-    int result = 0;
+    int result = -1;
     /* Sets the tacho output */
-    if (argc != 2)
-    {
-        uint32_t speed = main_read_tacho();
-        PRINTF("Tacho in is %08lx (%lu)\n", speed, speed);
-        speed = main_read_speedo();
-        PRINTF("Speedo in is %08lx (%lu)\n", speed, speed);
-    }
-    else
+    if (argc == 2)
     {
         uint32_t speed = parse_int(argv[1]);
         PRINTF("Set tacho out to %08lx (%lu)\n", speed, speed);
         main_set_tacho(speed);
+        result = 0;
+    }
+    else
+    {
+        PRINTF("Call %s <ticks>\n", argv[0]);
+    }
+    return result;
+}
+
+static int fn_clocks(unsigned int argc, char* argv[])
+{
+    int result = 0;
+    struct clocks_state_t state;
+    clocks_get(&state);
+    PRINTF("Tacho : %u rpm\n", state.current_revs);
+    PRINTF("Speedo: %u mph\n", state.current_speed);
+    for(int i = 0; i < NUMELTS(state.trip); i++)
+    {
+        PRINTF("Trip %u: %lu.%u \n", i, state.trip[i] / CLOCKS_DISTANCE_SCALE, (int) (state.trip[i] % CLOCKS_DISTANCE_SCALE));
     }
     return result;
 }
@@ -449,19 +468,19 @@ static int fn_rpm(unsigned int argc, char* argv[])
     else
     {
         uint32_t rpm = parse_int(argv[1]);
-        uint32_t speed;
+        uint32_t period;
         if (rpm > 0)
         {
             double p = pow(rpm, tacho_power);
             double inter = tacho_ratio / p;
-            speed = (uint32_t) inter;
+            period = (uint32_t) inter;
         }
         else
         {
-            speed = 0;
+            period = 0;
         }
-        PRINTF("Set tacho out to %lu rpm, %08lx (%lu)\n", rpm, speed, speed);
-        main_set_tacho(speed);
+        PRINTF("Set tacho out to %lu rpm, %08lx (%lu)\n", rpm, period, period);
+        main_set_tacho(period);
     }
     return result;
 }
@@ -484,7 +503,7 @@ static int fn_digits(unsigned int argc, char* argv[])
         uint16_t number = parse_int(argv[4]);
         PRINTF("Drawing %u @ %u,%u in %06lx\n", number, x, y, col);
         then = get_counter();
-        font_draw_number_large(x, y, number, col, LCD_BLACK);
+        font_draw_number_large(x, y, number, 5, col, LCD_BLACK);
         now = get_counter();
         PRINTF("Took %u ms\n", TIMER_TICKS_TO_MS(now - then));
     }
@@ -563,6 +582,17 @@ static int fn_enter(unsigned int argc, char* argv[])
 static int fn_down(unsigned int argc, char* argv[])
 {
     menu_keypress(MENU_KEYPRESS_DOWN);
+    return 0;
+}
+
+static int fn_short(unsigned int argc, char* argv[])
+{
+    main_fake_short_press();
+    return 0;
+}
+static int fn_long(unsigned int argc, char* argv[])
+{
+    main_fake_long_press();
     return 0;
 }
 

@@ -38,6 +38,7 @@ extern "C" {
 ***************************************************/
 
 #include "util/util.h"
+#include "menu/menu.h"
 
 /**************************************************
 * Public Defines
@@ -64,11 +65,16 @@ extern "C" {
 
 void main_set_tacho(uint32_t timer_ticks);
 
-uint32_t main_read_tacho(void);
-
-uint32_t main_read_speedo(void);
-
 uint32_t get_counter(void);
+
+bool main_menu_close(
+    const struct menu_t *p_menu,
+    const struct menu_item_t *p_menu_item
+);
+
+void main_fake_short_press(void);
+
+void main_fake_long_press(void);
 
 /**************************************************
 * Public Function Prototypes

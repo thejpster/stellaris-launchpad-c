@@ -62,7 +62,9 @@
 
 #include "circbuffer/circbuffer.h"
 #include "command/command.h"
-#include "menu/menu.h"
+#include "font/font.h"
+#include "clocks/clocks.h"
+#include "menu/menu_lexgo_bonus.h"
 
 #include "main.h"
 
@@ -75,29 +77,18 @@
 #define IN_2 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 4) /* Button input */
 #define OUT_0 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 5) /* Tacho output */
 
-#define BUTTON_DEBOUNCE_COUNT 3 /* Number of 250 ms overflows required to register button */
-
-/* Magic value which indicates speed is approximately zero */
-#define STALLED 0xFFFFFFFF
-
-/* Number of counter ticks elapsed before we declare speed to be zero. */
-#define MAX_PERIOD TICK_RATE /* One second */
-
 /* Delay between screen updates (in timer ticks) */
-#define DELAY_TICKS MS_TO_TIMER_TICKS(250)
+#define DELAY_TICKS MS_TO_TIMER_TICKS(1000)
 
 /* Size of IRQ to userland ring buffer */
 #define MAX_UART_CHARS 16
 
+#define SHORT_PRESS 3
+#define LONG_PRESS 8
+
 /**************************************************
 * Data Types
 **************************************************/
-
-typedef struct waveform_t
-{
-    uint32_t period;
-    uint32_t last_seen;
-} waveform_t;
 
 /**************************************************
 * Function Prototypes
@@ -116,7 +107,13 @@ static void timer_interrupt(
     uint32_t n_context
 );
 
-static void input_interrupt(gpio_io_pin_t pin, void *p_context, uint32_t n_context);
+static void input_interrupt(
+    gpio_io_pin_t pin,
+    void *p_context,
+    uint32_t n_context
+);
+
+static void screen_redraw(void);
 
 /**************************************************
 * Public Data
@@ -141,25 +138,23 @@ static const timer_config_t g_timer_config =
     }
 };
 
-
 static uint8_t g_buffer[MAX_UART_CHARS];
 
 static struct circbuffer_t g_uart_cb;
 
 static volatile uint32_t g_overflow_count;
 
-static volatile uint32_t g_output_rate = 65536;
-
-static volatile uint32_t g_new_output_rate = 0;
+static volatile uint32_t g_output_rate = 0;
 
 static volatile bool g_out_level = false;
 
-static volatile bool g_button_count = 3;
+static volatile unsigned int g_button_count = 0;
 
-static volatile bool g_start = false;
+static volatile unsigned int g_short_presses;
 
-static volatile waveform_t speedo = { .last_seen = 0, .period = STALLED };
-static volatile waveform_t tacho  = { .last_seen = 0, .period = STALLED };
+static volatile unsigned int g_long_presses;
+
+static bool menu_mode = false;
 
 /**************************************************
 * Public Functions
@@ -194,20 +189,20 @@ int main(void)
     PRINTF("***********************************\n");
 
     lcd_init();
+    clocks_init();
 
     gpio_make_input(IN_0);
     gpio_make_input(IN_1);
     gpio_make_input(IN_2);
     gpio_make_output(OUT_0, 0);
 
-    gpio_register_handler(IN_0, GPIO_INTERRUPT_MODE_BOTH, input_interrupt, (void *) &speedo, 0);
-    gpio_register_handler(IN_1, GPIO_INTERRUPT_MODE_BOTH, input_interrupt, (void *) &tacho, 0);
+    gpio_register_handler(IN_0, GPIO_INTERRUPT_MODE_BOTH, input_interrupt, NULL, 0);
+    gpio_register_handler(IN_1, GPIO_INTERRUPT_MODE_BOTH, input_interrupt, NULL, 1);
 
     timer_configure(TIMER_WIDE_0, &g_timer_config);
     timer_register_handler(TIMER_WIDE_0, TIMER_A, timer_interrupt, NULL, 0);
     timer_register_handler(TIMER_WIDE_0, TIMER_B, timer_interrupt, NULL, 0);
     timer_set_interval_load(TIMER_WIDE_0, TIMER_A, 1 << 24); /* 2**24 / 66.67MHz = 0.25 secs between interrupts */
-    timer_set_interval_load(TIMER_WIDE_0, TIMER_B, g_output_rate);
 
     /*
      * We as increment the overflow counter (a uint32_t) every 250 ms or so,
@@ -222,8 +217,6 @@ int main(void)
     timer_interrupt_enable(TIMER_WIDE_0, TIMER_A_INTERRUPT_TIMEOUT);
     timer_interrupt_enable(TIMER_WIDE_0, TIMER_B_INTERRUPT_TIMEOUT);
     timer_enable(TIMER_WIDE_0, TIMER_A);
-    timer_enable(TIMER_WIDE_0, TIMER_B);
-
 
     uint32_t then, now, diff;
     then = get_counter();
@@ -233,15 +226,39 @@ int main(void)
         diff = now - then;
         if (diff > DELAY_TICKS)
         {
-            /* Do screen update here */
-            //font_draw_number_large(100, 100, count, ' ', LCD_BLUE_DIM, LCD_BLACK);
+            if (!menu_mode)
+            {
+                screen_redraw();
+            }
             then = now;
         }
-        if (!circbuffer_isempty(&g_uart_cb))
+        while (!circbuffer_isempty(&g_uart_cb))
         {
             char c = (char) circbuffer_read(&g_uart_cb);
             command_handle_char(c);
         }
+        if (g_short_presses)
+        {
+            g_short_presses--;
+            if (menu_mode)
+            {
+                menu_keypress(MENU_KEYPRESS_DOWN);
+            }
+        }
+        if (g_long_presses)
+        {
+            g_long_presses--;
+            if (!menu_mode)
+            {
+                menu_lexgo_bonus_init();
+                menu_mode = true;
+            }
+            else
+            {
+                menu_keypress(MENU_KEYPRESS_ENTER);
+            }
+        }
+        delay_ms(10);
     }
 
     /* Shouldn't get here */
@@ -250,29 +267,19 @@ int main(void)
 
 void main_set_tacho(uint32_t timer_ticks)
 {
-    PRINTF("Set tacho to %08lx\n", timer_ticks);
-    if (!g_output_rate)
+    if (timer_ticks && !g_output_rate)
     {
-        PRINTF("Timer start\n");
+        PRINTF("Start TW0/B\n");
         g_output_rate = timer_ticks;
         /* Kick it off again as it was stopped */
         timer_set_interval_load(TIMER_WIDE_0, TIMER_B, g_output_rate);
+        timer_enable(TIMER_WIDE_0, TIMER_B);
     }
     else
     {
-        PRINTF("Timer already running\n");
+        /* Let it change on the next interrupt */
         g_output_rate = timer_ticks;
     }
-}
-
-uint32_t main_read_tacho(void)
-{
-    return tacho.period;
-}
-
-uint32_t main_read_speedo(void)
-{
-    return speedo.period;
 }
 
 /**
@@ -301,6 +308,26 @@ uint32_t get_counter(void)
     return timer_val;
 }
 
+bool main_menu_close(
+    const struct menu_t *p_menu,
+    const struct menu_item_t *p_menu_item
+)
+{
+    menu_mode = false;
+    lcd_paint_clear_screen();
+    return false;
+}
+
+void main_fake_short_press(void)
+{
+    g_short_presses++;
+}
+
+void main_fake_long_press(void)
+{
+    g_long_presses++;
+}
+
 /**************************************************
 * Private Functions
 ***************************************************/
@@ -317,7 +344,7 @@ static void uart_chars_received(
     /* Don't do any printf here - we're in an interrupt and we
      * need to get out of it as quickly as possible.
      */
-    while(buffer_size)
+    while (buffer_size)
     {
         if (!circbuffer_isfull(&g_uart_cb))
         {
@@ -352,37 +379,35 @@ static void timer_interrupt(
         /* Debounce the button */
         if (gpio_read_input(IN_2))
         {
-            if (g_button_count)
+            g_button_count++;
+            if (g_button_count == LONG_PRESS)
             {
-                /* When this hits zero, the button has been satisfactorily pressed */
-                g_button_count--;
+                g_long_presses++;
             }
         }
         else
         {
-            g_button_count = BUTTON_DEBOUNCE_COUNT;
+            if ((g_button_count >= SHORT_PRESS) && (g_button_count < LONG_PRESS))
+            {
+                /* Enough for a short press but not for a long press */
+                g_short_presses;
+            }
+            g_button_count = 0;
         }
-        /* Zero stalled input readings */
-        uint32_t now = get_counter();
-        if ((now - speedo.last_seen) > MAX_PERIOD)
-        {
-            speedo.period = STALLED;
-            speedo.last_seen = now;
-        }
-        if ((now - tacho.last_seen) > MAX_PERIOD)
-        {
-            tacho.period = STALLED;
-            tacho.last_seen = now;
-        }
+        clocks_timer_tick();
     }
     else
     {
         timer_interrupt_clear(timer, TIMER_B_INTERRUPT_TIMEOUT);
+        gpio_set_output(OUT_0, g_out_level);
+        g_out_level = !g_out_level;
         if (g_output_rate)
         {
             timer_set_interval_load(TIMER_WIDE_0, TIMER_B, g_output_rate);
-            gpio_set_output(OUT_0, g_out_level);
-            g_out_level = !g_out_level;
+        }
+        else
+        {
+            timer_disable(TIMER_WIDE_0, TIMER_B);
         }
     }
 }
@@ -396,11 +421,36 @@ static void input_interrupt(
     uint32_t n_context
 )
 {
-    /* Don't care which pin - just use the given context */
-    volatile waveform_t *p = (waveform_t *) p_context;
-    uint32_t now = get_counter();
-    p->period = now - p->last_seen;
-    p->last_seen = now;
+    if (n_context == 0)
+    {
+        clocks_speedo_edge();
+    }
+    else
+    {
+        clocks_tacho_edge();
+    }
+}
+
+static void screen_redraw(void)
+{
+    struct clocks_state_t state;
+    char trip_buffer[20];
+    lcd_row_t y = 140;
+    clocks_get(&state);
+    /* Do screen update here */
+    font_draw_number_large(10, y, state.current_speed, 4, LCD_BLUE, LCD_BLACK);
+    y = y + 110;
+    font_draw_number_large(10, y, state.current_revs, 4, LCD_BLUE, LCD_BLACK);
+    y = y + 110;
+    for (int i = 0; i < CLOCKS_NUM_TRIPS; i++)
+    {
+        sprintf(trip_buffer, "%.6lu.%u mi",
+                state.trip[i] / CLOCKS_DISTANCE_SCALE,
+                (int) (state.trip[i] % CLOCKS_DISTANCE_SCALE));
+        font_draw_text_small(50, y, trip_buffer, LCD_GREEN, LCD_BLACK);
+        y = y + 20;
+    }
+    /* @todo should set rpm here */
 }
 
 /**************************************************

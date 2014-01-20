@@ -103,6 +103,7 @@ sources = [
     "main.c",
     "circbuffer/src/circbuffer.c",
     "command/src/command.c",
+    "clocks/src/clocks.c",
     "drivers/gpio/src/gpio.c",
     "drivers/lcd/src/lcd.c",
     "drivers/misc/src/misc.c",

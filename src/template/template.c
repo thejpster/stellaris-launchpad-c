@@ -28,7 +28,8 @@
 * Includes
 ***************************************************/
 
-#include "template.h"
+#include "util/util.h"
+#include "../template.h"
 
 /**************************************************
 * Defines

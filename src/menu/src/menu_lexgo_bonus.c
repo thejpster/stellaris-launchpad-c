@@ -29,6 +29,8 @@
 ***************************************************/
 
 #include "util/util.h"
+#include "clocks/clocks.h"
+#include "main.h"
 
 #include "../menu.h"
 
@@ -53,13 +55,25 @@ static bool test_action(
     const struct menu_item_t *p_menu_item
 );
 
+static bool zero_tank(
+    const struct menu_t *p_menu,
+    const struct menu_item_t *p_menu_item
+);
+
+static bool zero_journey(
+    const struct menu_t *p_menu,
+    const struct menu_item_t *p_menu_item
+);
+
 /**************************************************
 * Public Data
 **************************************************/
 
 const struct menu_item_t settings_menu_items[] =
 {
-    { "Fangle", MENU_ITEM_TYPE_ACTION, NULL, test_action }
+    { "Option A", MENU_ITEM_TYPE_ACTION, NULL, test_action },
+    { "Option B", MENU_ITEM_TYPE_ACTION, NULL, test_action },
+    { "Option C", MENU_ITEM_TYPE_ACTION, NULL, test_action }
 };
 
 const struct menu_t settings_menu =
@@ -72,16 +86,16 @@ const struct menu_t settings_menu =
 
 const struct menu_item_t top_menu_items[] =
 {
-    { "Item A", MENU_ITEM_TYPE_ACTION, NULL, test_action },
-    { "Item B", MENU_ITEM_TYPE_ACTION, NULL, test_action },
     { "Settings", MENU_ITEM_TYPE_SUBMENU, &settings_menu, NULL },
+    { "Zero Tank", MENU_ITEM_TYPE_ACTION, NULL, zero_tank },
+    { "Zero Journey", MENU_ITEM_TYPE_ACTION, NULL, zero_journey },
 };
 
 const struct menu_t top_menu =
 {
     "Lexgo Bonus",
     NUMELTS(top_menu_items),
-    NULL,
+    main_menu_close,
     top_menu_items
 };
 
@@ -119,6 +133,26 @@ static bool test_action(
         PRINTF("Selected menu item %s/Back\n", p_menu->p_title);
     }
     /* Always redraw menu */
+    return true;
+}
+
+static bool zero_tank(
+    const struct menu_t *p_menu,
+    const struct menu_item_t *p_menu_item
+)
+{
+    clocks_trip_reset(CLOCKS_TRIP_TANK);
+    /* Redraw menu */
+    return true;
+}
+
+static bool zero_journey(
+    const struct menu_t *p_menu,
+    const struct menu_item_t *p_menu_item
+)
+{
+    clocks_trip_reset(CLOCKS_TRIP_JOURNEY);
+    /* Redraw menu */
     return true;
 }
 

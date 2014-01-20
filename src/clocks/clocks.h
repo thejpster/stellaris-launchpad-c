@@ -2,7 +2,7 @@
 *
 * Stellaris Launchpad Example Project
 *
-* Copyright (c) 2013 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2014 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -22,12 +22,10 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
-* Code for displaying text/numbers on the LCD.
-* 
 *****************************************************/
 
-#ifndef FONT_H
-#define FONT_H
+#ifndef TEMPLATE_H
+#define TEMPLATE_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,19 +35,42 @@ extern "C" {
 * Includes
 ***************************************************/
 
-#include "drivers/lcd/lcd.h"
+/* None */
 
 /**************************************************
 * Public Defines
 ***************************************************/
 
-/* None */
+#define CLOCKS_DISTANCE_SCALE 10
+
+#define CLOCKS_NUM_TRIPS (CLOCKS_TRIP_RUN + 1)
 
 /**************************************************
 * Public Data Types
 **************************************************/
 
-/* None */
+/* In units of 1/CLOCKS_DISTANCE_SCALE miles */
+typedef uint32_t clocks_distance_t;
+
+/* In mph, i.e. 0..255 mph */
+typedef uint8_t clocks_speed_t;
+
+/* In rpm, i.e. 0..65535 rpm */
+typedef uint16_t clocks_revs_t;
+
+enum clocks_trip_t {
+    CLOCKS_ODOMETER,
+    CLOCKS_TRIP_TANK,
+    CLOCKS_TRIP_JOURNEY,
+    CLOCKS_TRIP_RUN
+};
+
+struct clocks_state_t {
+    clocks_speed_t current_speed;
+    clocks_revs_t current_revs;
+    clocks_distance_t trip[CLOCKS_NUM_TRIPS];
+};
+
 
 /**************************************************
 * Public Data
@@ -61,26 +82,48 @@ extern "C" {
 * Public Function Prototypes
 ***************************************************/
 
-void font_draw_number_large(
-    lcd_row_t x, lcd_col_t y,
-    uint16_t number,
-    unsigned int pad_width,
-    lcd_colour_t fg,
-    lcd_colour_t bg
-);
+/*
+ * Load trips from non-volatile memory.
+ */
+void clocks_init(void);
 
-void font_draw_text_small(
-    lcd_row_t x, lcd_col_t y,
-    const char* p_message,
-    lcd_colour_t fg,
-    lcd_colour_t bg
-);
+/*
+ * Store trips in non-volatile memory.
+ */
+void clocks_save(void);
+
+/*
+ * Fetch current status.
+ */
+void clocks_get(struct clocks_state_t* p_state);
+
+/*
+ * This should be called four times per second.
+ * It's used to detect stalled inputs (which are normally edge triggered).
+ */
+void clocks_timer_tick(void);
+
+/*
+ * Call this when the speedo input has an edge.
+ */
+void clocks_speedo_edge(void);
+
+/*
+ * Call this when the tacho input has an edge.
+ */
+void clocks_tacho_edge(void);
+
+/*
+ * Reset the trip. You can't reset trip 0.
+ */
+void clocks_trip_reset(enum clocks_trip_t trip);
+
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* ndef FONT_H */
+#endif /* ndef TEMPLATE_H */
 
 /**************************************************
 * End of file
