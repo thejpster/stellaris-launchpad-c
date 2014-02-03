@@ -73,15 +73,13 @@ extern "C" {
 #define LCD_WIDTH 480
 #define LCD_HEIGHT 272
 
-#ifdef LCD_ROTATE_DISPLAY
 #define LCD_FIRST_COLUMN 0
-#define LCD_LAST_COLUMN (LCD_HEIGHT-1)
 #define LCD_FIRST_ROW 0
+#ifdef LCD_ROTATE_DISPLAY
+#define LCD_LAST_COLUMN (LCD_HEIGHT-1)
 #define LCD_LAST_ROW (LCD_WIDTH-1)
 #else
-#define LCD_FIRST_COLUMN 0
 #define LCD_LAST_COLUMN (LCD_WIDTH-1)
-#define LCD_FIRST_ROW 0
 #define LCD_LAST_ROW (LCD_HEIGHT-1)
 #endif
 

@@ -103,6 +103,7 @@ class LCD(wx.Frame):
         dc = wx.MemoryDC()
         dc.SelectObject(self.bmp)
         dc.SetBrush(wx.Brush((0,0,0), wx.SOLID))
+        dc.SetPen(wx.Pen((0,0,0)))
         dc.DrawRectangle(0,0,272,480)
         dc.SelectObject(wx.NullBitmap)
         #del dc # need to get rid of the MemoryDC before Update() is called.
@@ -111,6 +112,7 @@ class LCD(wx.Frame):
         dc = wx.MemoryDC()
         dc.SelectObject(self.bmp)
         dc.SetBrush(wx.Brush(colour, wx.SOLID))
+        dc.SetPen(wx.Pen(colour))
         (x,y) = p1
         (w,h) = (1 + p2[0] - p1[0], 1 + p2[1] - p1[1])
         dc.DrawRectangle(x, y, w, h)

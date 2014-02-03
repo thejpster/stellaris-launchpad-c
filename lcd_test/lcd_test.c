@@ -31,6 +31,7 @@
 #include "util/util.h"
 #include <sys/select.h>
 #include "font/font.h"
+#include "menu/menu_lexgo_bonus.h"
 #include "clocks/clocks.h"
 #include "drivers/lcd/lcd.h"
 
@@ -80,7 +81,7 @@ int main(int argc, char* argv[])
     state.trip[CLOCKS_TRIP_TANK] = 3000;
     state.trip[CLOCKS_TRIP_JOURNEY] = 2567;
     state.trip[CLOCKS_TRIP_RUN] = 1234;
-    for(int i = 0; i < 150; i++)
+    for(int i = 0; i < 150; i+=1)
     {
         state.current_speed = i;
         state.current_revs-= 10;
@@ -91,6 +92,7 @@ int main(int argc, char* argv[])
         screen_redraw();
         delay_ms(250);
     }
+    menu_lexgo_bonus_init();
 }
 
 void delay_ms(uint32_t milliseconds)
@@ -99,6 +101,19 @@ void delay_ms(uint32_t milliseconds)
     t.tv_sec = milliseconds / 1000;
     t.tv_usec = (milliseconds % 1000) * 1000;
     select(0, NULL, NULL, NULL, &t);
+}
+
+void clocks_trip_reset(enum clocks_trip_t trip)
+{
+
+}
+
+bool main_menu_close(
+    const struct menu_t *p_menu,
+    const struct menu_item_t *p_menu_item
+)
+{
+
 }
 
 /**************************************************
@@ -124,7 +139,7 @@ static void screen_furniture(void)
     lcd_paint_fill_rectangle(
         ORANGE,
         LCD_FIRST_COLUMN, LCD_LAST_COLUMN,
-        330, 335
+        330, 332
         );
     font_draw_text_small(5, 340, "Trips: (miles)", ORANGE, LCD_BLACK, false);
     font_draw_text_small(5, 360, " Odo", ORANGE, LCD_BLACK, true);
@@ -208,8 +223,8 @@ static void screen_redraw(void)
     }
     printf("split = %u, col=%06x\n", split, c);
     lcd_paint_fill_rectangle(c,
-        SPEED_BAR_X + SPEED_BAR_EDGE, SPEED_BAR_X + SPEED_BAR_EDGE + split - 1,
-        SPEED_BAR_Y + SPEED_BAR_EDGE, SPEED_BAR_Y + SPEED_BAR_EDGE + SPEED_BAR_HEIGHT - 1
+        SPEED_BAR_X + SPEED_BAR_EDGE + 1, SPEED_BAR_X + SPEED_BAR_EDGE + split - 2,
+        SPEED_BAR_Y + SPEED_BAR_EDGE + 1, SPEED_BAR_Y + SPEED_BAR_EDGE + SPEED_BAR_HEIGHT - 2
         );
     lcd_paint_fill_rectangle(LCD_BLACK,
         SPEED_BAR_X + SPEED_BAR_EDGE + split, SPEED_BAR_X + SPEED_BAR_WIDTH + SPEED_BAR_EDGE - 1,
