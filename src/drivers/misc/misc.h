@@ -78,12 +78,6 @@ extern void set_clock(void);
 extern void busy_sleep(uint32_t delay);
 
 /**
- * Calibrated (ish) sleep functions.
- */
-void delay_ms(uint32_t delay);
-void delay_us(uint32_t delay);
-
-/**
  * Enable an interrupt. See table 2-9 in [1].
  */
 extern void enable_interrupt(unsigned int interrupt_id);
