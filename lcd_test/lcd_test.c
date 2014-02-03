@@ -124,14 +124,19 @@ bool main_menu_close(
 #define GREEN 0xe09512
 #define BLUE 0x0072ee
 
+#define GRAPH_BORDER 0xaaaaaa
+#define GRAPH_TEXT 0xcccccc
+
 #define SPEED_BAR_HEIGHT 20
-#define SPEED_BAR_WIDTH 226
-#define SPEED_BAR_EDGE 3
-#define SPEED_BAR_X 20
+#define SPEED_BAR_WIDTH 230
+#define SPEED_BAR_INNER_BORDER 2
+#define SPEED_BAR_EDGE 1
+#define SPEED_BAR_X 15
 #define SPEED_BAR_Y 248
 #define SPEED_BAR_X2 (SPEED_BAR_X + SPEED_BAR_EDGE + SPEED_BAR_WIDTH + SPEED_BAR_EDGE - 1)
 #define SPEED_BAR_Y2 (SPEED_BAR_Y + SPEED_BAR_EDGE + SPEED_BAR_HEIGHT + SPEED_BAR_EDGE - 1)
 #define SPEED_BAR_MAX_SPEED 120
+
 
 static void screen_furniture(void)
 {
@@ -139,20 +144,20 @@ static void screen_furniture(void)
     lcd_paint_fill_rectangle(
         ORANGE,
         LCD_FIRST_COLUMN, LCD_LAST_COLUMN,
-        330, 332
+        330, 331
         );
-    font_draw_text_small(5, 340, "Trips: (miles)", ORANGE, LCD_BLACK, false);
+    font_draw_text_small(5, 340, "Trips:", ORANGE, LCD_BLACK, false);
     font_draw_text_small(5, 360, " Odo", ORANGE, LCD_BLACK, true);
     font_draw_text_small(5, 380, "Tank", ORANGE, LCD_BLACK, true);
     font_draw_text_small(5, 400, "Trip", ORANGE, LCD_BLACK, true);
     font_draw_text_small(5, 420, "Jrny", ORANGE, LCD_BLACK, true);
     font_draw_text_small(210, 220, "mph", BLUE, LCD_BLACK, false);
 
-    lcd_paint_fill_rectangle(LCD_WHITE,
+    lcd_paint_fill_rectangle(GRAPH_BORDER,
         SPEED_BAR_X, SPEED_BAR_X2,
         SPEED_BAR_Y, SPEED_BAR_Y2
         );
-    lcd_paint_fill_rectangle(LCD_WHITE,
+    lcd_paint_fill_rectangle(LCD_BLACK,
         SPEED_BAR_X + SPEED_BAR_EDGE, SPEED_BAR_X2 - SPEED_BAR_EDGE,
         SPEED_BAR_Y + SPEED_BAR_EDGE, SPEED_BAR_Y2 - SPEED_BAR_EDGE
         );
@@ -161,11 +166,11 @@ static void screen_furniture(void)
     {
         char buf[4];
         lcd_col_t offset = (i * SPEED_BAR_WIDTH) / SPEED_BAR_MAX_SPEED;
-        lcd_paint_fill_rectangle(LCD_WHITE,
+        lcd_paint_fill_rectangle(GRAPH_BORDER,
+            SPEED_BAR_X + SPEED_BAR_EDGE + offset - 1,
             SPEED_BAR_X + SPEED_BAR_EDGE + offset,
-            SPEED_BAR_X + SPEED_BAR_EDGE + offset + 2,
             SPEED_BAR_Y2,
-            SPEED_BAR_Y2 + 6
+            SPEED_BAR_Y2 + 4
             );
     }
     for(unsigned int i = 0; i <= 120; i+= 30)
@@ -178,7 +183,7 @@ static void screen_furniture(void)
             SPEED_BAR_X + SPEED_BAR_EDGE + offset - (label_width/2),
             SPEED_BAR_Y2 + 10,
             buf,
-            LCD_WHITE, LCD_BLACK, false
+            GRAPH_TEXT, LCD_BLACK, false
             );
     }
 }
@@ -190,7 +195,7 @@ static void screen_redraw(void)
     font_draw_number_large(10, 140, state.current_speed, 3, LCD_WHITE, LCD_BLACK);
     for (int i = 0; i < CLOCKS_NUM_TRIPS; i++)
     {
-        sprintf(trip_buffer, "%.6lu.%u mi",
+        sprintf(trip_buffer, "%6.0lu.%u mi",
                 state.trip[i] / CLOCKS_DISTANCE_SCALE,
                 (int) (state.trip[i] % CLOCKS_DISTANCE_SCALE));
         font_draw_text_small(
@@ -223,12 +228,12 @@ static void screen_redraw(void)
     }
     printf("split = %u, col=%06x\n", split, c);
     lcd_paint_fill_rectangle(c,
-        SPEED_BAR_X + SPEED_BAR_EDGE + 1, SPEED_BAR_X + SPEED_BAR_EDGE + split - 2,
-        SPEED_BAR_Y + SPEED_BAR_EDGE + 1, SPEED_BAR_Y + SPEED_BAR_EDGE + SPEED_BAR_HEIGHT - 2
+        SPEED_BAR_X + SPEED_BAR_EDGE + SPEED_BAR_INNER_BORDER, SPEED_BAR_X + SPEED_BAR_EDGE + split - 1,
+        SPEED_BAR_Y + SPEED_BAR_EDGE + SPEED_BAR_INNER_BORDER, SPEED_BAR_Y2 - SPEED_BAR_EDGE - SPEED_BAR_INNER_BORDER
         );
     lcd_paint_fill_rectangle(LCD_BLACK,
-        SPEED_BAR_X + SPEED_BAR_EDGE + split, SPEED_BAR_X + SPEED_BAR_WIDTH + SPEED_BAR_EDGE - 1,
-        SPEED_BAR_Y + SPEED_BAR_EDGE, SPEED_BAR_Y + SPEED_BAR_HEIGHT + SPEED_BAR_EDGE - 1
+        SPEED_BAR_X + SPEED_BAR_EDGE + split, SPEED_BAR_X2 - SPEED_BAR_EDGE - SPEED_BAR_INNER_BORDER,
+        SPEED_BAR_Y + SPEED_BAR_EDGE + SPEED_BAR_INNER_BORDER, SPEED_BAR_Y2 - SPEED_BAR_EDGE - SPEED_BAR_INNER_BORDER
         );
     /* @todo should set rpm here */
 }

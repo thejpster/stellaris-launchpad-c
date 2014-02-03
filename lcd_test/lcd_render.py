@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import wx
+import sys
 import random
 import threading
 import binascii
@@ -9,23 +10,32 @@ import binascii
 # Define notification event for thread completion
 EVT_RESULT_ID = wx.NewId()
 
+DEBUG = False
+
+
 class ResultEvent(wx.PyEvent):
+
     """Simple event to carry arbitrary result data."""
+
     def __init__(self, data):
         """Init Result Event."""
         wx.PyEvent.__init__(self)
         self.SetEventType(EVT_RESULT_ID)
         self.data = data
 
+
 def process_fifo(lcd):
+
     def unpack(s):
         return binascii.unhexlify(s)
+
     def colour_tuple(s):
         col = int(s, base=0)
         r = (col >> 16) & 0xFF
         g = (col >> 8) & 0xFF
         b = col & 0xFF
-        return (r,g,b)
+        return (r, g, b)
+
     while True:
         f = open("lcd_fifo", "r", buffering=False)
         print "Thread started"
@@ -47,7 +57,7 @@ def process_fifo(lcd):
                 y1 = int(y1, base=0)
                 x2 = int(x2, base=0)
                 y2 = int(y2, base=0)
-                data = ("setBox", (x1,y1), (x2,y2), colour_tuple(col))
+                data = ("setBox", (x1, y1), (x2, y2), colour_tuple(col))
                 wx.PostEvent(lcd, ResultEvent(data))
             if msg.startswith("bitmap"):
                 try:
@@ -61,7 +71,7 @@ def process_fifo(lcd):
                 fg = colour_tuple(fg)
                 bg = colour_tuple(bg)
                 bitmap = unpack(bitmap)
-                data = ("setBitmap", (x1,y1), (x2,y2), fg, bg, bitmap)
+                data = ("setBitmap", (x1, y1), (x2, y2), fg, bg, bitmap)
                 wx.PostEvent(lcd, ResultEvent(data))
             elif msg.startswith("plot"):
                 try:
@@ -73,10 +83,12 @@ def process_fifo(lcd):
                 data = ("setPixel", x, y, colour_tuple(col))
                 wx.PostEvent(lcd, ResultEvent(data))
 
+
 class LCD(wx.Frame):
+
     def __init__(self, parent, title):
-        super(LCD, self).__init__(parent, title=title, 
-            size=(272, 480))
+        super(LCD, self).__init__(parent, title=title,
+                                  size=(272, 480))
         self.Bind(wx.EVT_PAINT, self.OnPaint)
         self.Connect(-1, -1, EVT_RESULT_ID, self.OnMessage)
         self.Centre()
@@ -102,31 +114,33 @@ class LCD(wx.Frame):
     def clearBitmap(self):
         dc = wx.MemoryDC()
         dc.SelectObject(self.bmp)
-        dc.SetBrush(wx.Brush((0,0,0), wx.SOLID))
-        dc.SetPen(wx.Pen((0,0,0)))
-        dc.DrawRectangle(0,0,272,480)
+        dc.SetBrush(wx.Brush((0, 0, 0), wx.SOLID))
+        dc.SetPen(wx.Pen((0, 0, 0)))
+        dc.DrawRectangle(0, 0, 272, 480)
         dc.SelectObject(wx.NullBitmap)
-        #del dc # need to get rid of the MemoryDC before Update() is called.
+        # del dc # need to get rid of the MemoryDC before Update() is called.
 
     def setBox(self, p1, p2, colour):
         dc = wx.MemoryDC()
         dc.SelectObject(self.bmp)
         dc.SetBrush(wx.Brush(colour, wx.SOLID))
         dc.SetPen(wx.Pen(colour))
-        (x,y) = p1
-        (w,h) = (1 + p2[0] - p1[0], 1 + p2[1] - p1[1])
+        (x, y) = p1
+        (w, h) = (1 + p2[0] - p1[0], 1 + p2[1] - p1[1])
+        if DEBUG:
+            print "DrawRectangle(%u,%u,%u,%u) @ %02x%02x%02x" % (x,y,w,h,colour[0],colour[1],colour[2])
         dc.DrawRectangle(x, y, w, h)
         dc.SelectObject(wx.NullBitmap)
-        #del dc # need to get rid of the MemoryDC before Update() is called.
+        # del dc # need to get rid of the MemoryDC before Update() is called.
 
     def setBitmap(self, p1, p2, fg, bg, data):
         dc = wx.MemoryDC()
         dc.SelectObject(self.bmp)
         fg_pen = wx.Pen(fg)
         bg_pen = wx.Pen(bg)
-        x,y = p1
-        min_x,min_y = p1
-        max_x,max_y = p2
+        x, y = p1
+        min_x, min_y = p1
+        max_x, max_y = p2
         for b in data:
             byte = ord(b)
             for i in range(8):
@@ -136,27 +150,29 @@ class LCD(wx.Frame):
                     dc.SetPen(fg_pen)
                 else:
                     dc.SetPen(bg_pen)
-                dc.DrawPoint(x,y)
+                dc.DrawPoint(x, y)
                 if (x == max_x):
                     x = min_x
                     y += 1
                 else:
                     x += 1
         dc.SelectObject(wx.NullBitmap)
-        #del dc # need to get rid of the MemoryDC before Update() is called.
+        # del dc # need to get rid of the MemoryDC before Update() is called.
 
     def setPixel(self, x, y, colour):
         dc = wx.MemoryDC()
         dc.SelectObject(self.bmp)
         dc.SetPen(wx.Pen(colour))
         dc.DrawPoint(x, y)
-        del dc # need to get rid of the MemoryDC before Update() is called.
+        del dc  # need to get rid of the MemoryDC before Update() is called.
 
     def OnPaint(self, e):
         dc = wx.PaintDC(self)
         dc.DrawBitmap(self.bmp, 0, 0)
 
 if __name__ == '__main__':
+    if "--debug" in sys.argv:
+        DEBUG = True
     app = wx.App()
     lcd = LCD(None, 'LCD')
     t = threading.Thread(target=process_fifo, args=(lcd,))
