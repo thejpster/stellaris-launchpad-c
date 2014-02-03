@@ -538,7 +538,7 @@ static int fn_text(unsigned int argc, char* argv[])
         p_message = argv[4];
         PRINTF("Drawing '%s' @ %u,%u in %06lx\n", p_message, x, y, col);
         then = get_counter();
-        font_draw_text_small(x, y, p_message, col, LCD_BLACK);
+        font_draw_text_small(x, y, p_message, col, LCD_BLACK, false);
         now = get_counter();
         PRINTF("Took %u ms\n", TIMER_TICKS_TO_MS(now - then));
     }

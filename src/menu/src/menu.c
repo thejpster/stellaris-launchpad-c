@@ -140,7 +140,7 @@ void menu_redraw(bool blank_screen)
     {
         lcd_paint_clear_screen();
     }
-    font_draw_text_small(MENU_INSET, y, p_menu->p_title, LCD_BLUE, LCD_BLACK);
+    font_draw_text_small(MENU_INSET, y, p_menu->p_title, LCD_BLUE, LCD_BLACK, false);
     lcd_paint_fill_rectangle(LCD_BLUE, LCD_FIRST_COLUMN, LCD_LAST_COLUMN, 20, 20);
     y += 24;
     for(size_t draw_item = 0; draw_item < p_menu->num_items; draw_item++)
@@ -149,22 +149,22 @@ void menu_redraw(bool blank_screen)
         PRINTF("%c %s\n", (draw_item == current_item) ? '*' : ' ', p_menu_item->p_label);
         if (draw_item == current_item)
         {
-            font_draw_text_small(MENU_INSET, y, p_menu_item->p_label, LCD_BLACK, LCD_BLUE);
+            font_draw_text_small(MENU_INSET, y, p_menu_item->p_label, LCD_BLACK, LCD_BLUE, false);
         }
         else
         {
-            font_draw_text_small(MENU_INSET, y, p_menu_item->p_label, LCD_BLUE, LCD_BLACK);
+            font_draw_text_small(MENU_INSET, y, p_menu_item->p_label, LCD_BLUE, LCD_BLACK, false);
         }
         y += 20;
     }
     PRINTF("%c Back\n", (p_menu->num_items == current_item) ? '*' : ' ');
     if (p_menu->num_items == current_item)
     {
-        font_draw_text_small(MENU_INSET, y, "Back", LCD_BLACK, LCD_BLUE);
+        font_draw_text_small(MENU_INSET, y, "Back", LCD_BLACK, LCD_BLUE, false);
     }
     else
     {
-        font_draw_text_small(MENU_INSET, y, "Back", LCD_BLUE, LCD_BLACK);
+        font_draw_text_small(MENU_INSET, y, "Back", LCD_BLUE, LCD_BLACK, false);
     }
 }
 

@@ -24,8 +24,8 @@
 *
 *****************************************************/
 
-#ifndef TEMPLATE_H
-#define TEMPLATE_H
+#ifndef CLOCKS_H
+#define CLOCKS_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -123,7 +123,7 @@ void clocks_trip_reset(enum clocks_trip_t trip);
 }
 #endif
 
-#endif /* ndef TEMPLATE_H */
+#endif /* ndef CLOCKS_H */
 
 /**************************************************
 * End of file

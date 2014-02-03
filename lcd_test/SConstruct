@@ -32,8 +32,8 @@ DEALINGS IN THE SOFTWARE.
 
 env = Environment()
 
+env.Append(CPPPATH = ['../src'])
 env.Append(CCFLAGS=[
-    "-I../src",
     "-g",
     "-std=c99"
     ])

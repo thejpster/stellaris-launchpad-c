@@ -73,8 +73,11 @@ void font_draw_text_small(
     lcd_row_t x, lcd_col_t y,
     const char* p_message,
     lcd_colour_t fg,
-    lcd_colour_t bg
+    lcd_colour_t bg,
+    bool monospace
 );
+
+void font_glyph_width_small(char x);
 
 #ifdef __cplusplus
 }

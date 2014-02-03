@@ -447,7 +447,7 @@ static void screen_redraw(void)
         sprintf(trip_buffer, "%.6lu.%u mi",
                 state.trip[i] / CLOCKS_DISTANCE_SCALE,
                 (int) (state.trip[i] % CLOCKS_DISTANCE_SCALE));
-        font_draw_text_small(50, y, trip_buffer, LCD_GREEN, LCD_BLACK);
+        font_draw_text_small(50, y, trip_buffer, LCD_GREEN, LCD_BLACK, true);
         y = y + 20;
     }
     /* @todo should set rpm here */

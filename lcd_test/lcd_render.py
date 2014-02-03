@@ -100,7 +100,6 @@ class LCD(wx.Frame):
         self.Update()
 
     def clearBitmap(self):
-        print "Clear"
         dc = wx.MemoryDC()
         dc.SelectObject(self.bmp)
         dc.SetBrush(wx.Brush((0,0,0), wx.SOLID))
@@ -113,8 +112,7 @@ class LCD(wx.Frame):
         dc.SelectObject(self.bmp)
         dc.SetBrush(wx.Brush(colour, wx.SOLID))
         (x,y) = p1
-        (w,h) = (p2[0] - p1[0], p2[1] - p1[1])
-        print "Box %r,%r,%r" % ((x,y), (w,h), colour)
+        (w,h) = (1 + p2[0] - p1[0], 1 + p2[1] - p1[1])
         dc.DrawRectangle(x, y, w, h)
         dc.SelectObject(wx.NullBitmap)
         #del dc # need to get rid of the MemoryDC before Update() is called.
@@ -127,11 +125,11 @@ class LCD(wx.Frame):
         x,y = p1
         min_x,min_y = p1
         max_x,max_y = p2
-        print "Bitmap %r %r %r %r" % (p1, p2, fg, bg)
         for b in data:
             byte = ord(b)
-            for i in range(7,-1,-1):
-                is_fg = byte & (1 << i)
+            for i in range(8):
+                is_fg = byte & 0x80
+                byte <<= 1
                 if is_fg:
                     dc.SetPen(fg_pen)
                 else:
@@ -162,5 +160,4 @@ if __name__ == '__main__':
     t = threading.Thread(target=process_fifo, args=(lcd,))
     t.daemon = True
     t.start()
-    print "Running mainloop"
     app.MainLoop()

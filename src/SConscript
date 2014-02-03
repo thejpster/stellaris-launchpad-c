@@ -99,6 +99,8 @@ env.Append(LIBS = [
     "m",
 ])
 
+env.Append(CPPPATH = ['./src'])
+
 sources = [
     "main.c",
     "circbuffer/src/circbuffer.c",
