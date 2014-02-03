@@ -22,46 +22,31 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
-* Utility functions and standard standard libraries.
-* 
 *****************************************************/
-
-#ifndef UTIL_UTIL_H
-#define UTIL_UTIL_H
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**************************************************
 * Includes
 ***************************************************/
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <inttypes.h>
-#include <stddef.h>
-#include <string.h>
-#include <stdio.h>
+#include "util/util.h"
+#include <sys/select.h>
+#include "font/font.h"
+#include "drivers/lcd/lcd.h"
 
 /**************************************************
-* Public Defines
+* Defines
 ***************************************************/
 
-#define NUMELTS(x) ( sizeof(x) / sizeof((x)[0]) )
-
-#define CLEAR_BITS(reg, bits) do { reg &= ~(bits); } while (0)
-
-#define SET_BITS(reg, bits) do { reg |= (bits); } while (0)
-
-#ifdef USE_IPRINTF
-#define PRINTF(...) iprintf(__VA_ARGS__)
-#else
-#define PRINTF(...) printf(__VA_ARGS__)
-#endif
+/* None */
 
 /**************************************************
-* Public Data Types
+* Data Types
+**************************************************/
+
+/* None */
+
+/**************************************************
+* Function Prototypes
 **************************************************/
 
 /* None */
@@ -70,23 +55,48 @@ extern "C" {
 * Public Data
 **************************************************/
 
+FILE* f;
+
+/**************************************************
+* Private Data
+**************************************************/
+
 /* None */
 
 /**************************************************
-* Public Function Prototypes
+* Public Functions
 ***************************************************/
 
-/**
- * Calibrated (ish) sleep functions.
- */
-void delay_ms(uint32_t delay);
-void delay_us(uint32_t delay);
-
-#ifdef __cplusplus
+int main(int argc, char* argv[])
+{
+	f = fopen("lcd_fifo", "w");
+	lcd_init();
+	for(int i = 0; i < 100; i++)
+	{
+		font_draw_number_large(
+			0, 0,
+			i,
+			3,
+			LCD_BLUE,
+			LCD_BLACK
+			);
+		delay_ms(250);
+	}
 }
-#endif
 
-#endif /* ndef UTIL_UTIL_H */
+void delay_ms(uint32_t milliseconds)
+{
+	struct timeval t;
+	t.tv_sec = milliseconds / 1000;
+	t.tv_usec = (milliseconds % 1000) * 1000;
+	select(0, NULL, NULL, NULL, &t);
+}
+
+/**************************************************
+* Private Functions
+***************************************************/
+
+/* None */
 
 /**************************************************
 * End of file
