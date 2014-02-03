@@ -46,6 +46,7 @@ sources = [
     "../src/menu/src/menu.c",
     "../src/menu/src/menu_lexgo_bonus.c",
     "../src/font/src/BigFont.c",
+    "../src/font/src/hallfetica.c",
     "../src/font/src/SevenSeg_XXXL_Num.c",
     "../src/drivers/lcd/src/lcd_sim.c",
     "lcd_test.c",

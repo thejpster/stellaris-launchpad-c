@@ -74,6 +74,13 @@ int main(int argc, char* argv[])
 {
     f = fopen("lcd_fifo", "w");
     lcd_init();
+#if defined(CHECK_FONTS)
+    for(char a = ' '; a <= '~'; a++)
+    {
+        font_glyph_width_small(a);
+    }
+    exit(1);
+#endif
     screen_furniture();
     state.current_speed = 123;
     state.current_revs = 4000;
@@ -141,16 +148,27 @@ bool main_menu_close(
 static void screen_furniture(void)
 {
     font_draw_text_small(5, 120, "Current speed:", BLUE, LCD_BLACK, false);
+    size_t w;
     lcd_paint_fill_rectangle(
         ORANGE,
         LCD_FIRST_COLUMN, LCD_LAST_COLUMN,
-        330, 331
+        337, 338
         );
-    font_draw_text_small(5, 340, "Trips:", ORANGE, LCD_BLACK, false);
-    font_draw_text_small(5, 360, " Odo", ORANGE, LCD_BLACK, true);
-    font_draw_text_small(5, 380, "Tank", ORANGE, LCD_BLACK, true);
-    font_draw_text_small(5, 400, "Trip", ORANGE, LCD_BLACK, true);
-    font_draw_text_small(5, 420, "Jrny", ORANGE, LCD_BLACK, true);
+    lcd_paint_fill_rectangle(
+        ORANGE,
+        LCD_FIRST_COLUMN, LCD_LAST_COLUMN,
+        356, 357
+        );
+    w = font_draw_text_small_len("Trips", false);
+    font_draw_text_small((LCD_LAST_COLUMN - w) / 2, 339, "Trips", ORANGE, LCD_BLACK, false);
+    w = font_draw_text_small_len("Odo", false);
+    font_draw_text_small(70 - w, 360, "Odo", ORANGE, LCD_BLACK, false);
+    w = font_draw_text_small_len("Tank", false);
+    font_draw_text_small(70 - w, 380, "Tank", ORANGE, LCD_BLACK, false);
+    w = font_draw_text_small_len("Trip", false);
+    font_draw_text_small(70 - w, 400, "Trip", ORANGE, LCD_BLACK, false);
+    w = font_draw_text_small_len("Jrny", false);
+    font_draw_text_small(70 - w, 420, "Jrny", ORANGE, LCD_BLACK, false);
     font_draw_text_small(210, 220, "mph", BLUE, LCD_BLACK, false);
 
     lcd_paint_fill_rectangle(GRAPH_BORDER,
@@ -178,7 +196,7 @@ static void screen_furniture(void)
         char buf[4];
         lcd_col_t offset = (i * SPEED_BAR_WIDTH) / SPEED_BAR_MAX_SPEED;
         sprintf(buf, "%u", i);
-        size_t label_width = strlen(buf) * 16;
+        size_t label_width = font_draw_text_small_len(buf, false);
         font_draw_text_small(
             SPEED_BAR_X + SPEED_BAR_EDGE + offset - (label_width/2),
             SPEED_BAR_Y2 + 10,

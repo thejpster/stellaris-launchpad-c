@@ -77,6 +77,11 @@ void font_draw_text_small(
     bool monospace
 );
 
+size_t font_draw_text_small_len(
+    const char* p_message,
+    bool monospace
+);
+
 void font_glyph_width_small(char x);
 
 #ifdef __cplusplus

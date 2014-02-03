@@ -60,6 +60,9 @@
 
 extern const unsigned char SevenSeg_XXXL_Num[];
 extern const unsigned char BigFont[];
+extern const unsigned char hallfetica_normal[];
+
+#define DEFAULT_FONT hallfetica_normal
 
 /**************************************************
 * Private Data
@@ -116,17 +119,17 @@ void font_draw_text_small(
     bool monospace
 )
 {
-    unsigned int glyph_width = BigFont[GLYPH_WIDTH_INDEX];
-    unsigned int glyph_height = BigFont[GLYPH_HEIGHT_INDEX];
+    unsigned int glyph_width = DEFAULT_FONT[GLYPH_WIDTH_INDEX];
+    unsigned int glyph_height = DEFAULT_FONT[GLYPH_HEIGHT_INDEX];
     unsigned int glyph_size = 1 + ((glyph_width/8) * glyph_height);
     while (*p_message)
     {
-        unsigned int glyph_num = *p_message - BigFont[GLYPH_OFFSET_INDEX];
-        if (glyph_num >= BigFont[GLYPH_NUM_GLYPHS_INDEX])
+        unsigned int glyph_num = *p_message - DEFAULT_FONT[GLYPH_OFFSET_INDEX];
+        if (glyph_num >= DEFAULT_FONT[GLYPH_NUM_GLYPHS_INDEX])
         {
-            glyph_num = '?' - BigFont[GLYPH_OFFSET_INDEX];
+            glyph_num = '?' - DEFAULT_FONT[GLYPH_OFFSET_INDEX];
         }
-        const uint8_t *p_glyph = &BigFont[GLYPH_START_INDEX + (glyph_size * glyph_num)];
+        const uint8_t *p_glyph = &DEFAULT_FONT[GLYPH_START_INDEX + (glyph_size * glyph_num)];
         lcd_paint_mono_rectangle(fg, bg, x, x+glyph_width-1, y, y+glyph_height-1, &p_glyph[1]);
         p_message++;
         if (monospace)
@@ -140,25 +143,79 @@ void font_draw_text_small(
     }
 }
 
+size_t font_draw_text_small_len(
+    const char* p_message,
+    bool monospace
+)
+{
+    unsigned int glyph_width = DEFAULT_FONT[GLYPH_WIDTH_INDEX];
+    unsigned int glyph_height = DEFAULT_FONT[GLYPH_HEIGHT_INDEX];
+    unsigned int glyph_size = 1 + ((glyph_width/8) * glyph_height);
+    size_t result = 0;
+    while (*p_message)
+    {
+        unsigned int glyph_num = *p_message - DEFAULT_FONT[GLYPH_OFFSET_INDEX];
+        if (glyph_num >= DEFAULT_FONT[GLYPH_NUM_GLYPHS_INDEX])
+        {
+            glyph_num = '?' - DEFAULT_FONT[GLYPH_OFFSET_INDEX];
+        }
+        const uint8_t *p_glyph = &DEFAULT_FONT[GLYPH_START_INDEX + (glyph_size * glyph_num)];
+        p_message++;
+        if (monospace)
+        {
+            result+=glyph_width;
+        }
+        else
+        {
+            result+=p_glyph[0];
+        }
+    }
+    return result;
+}
+
 void font_glyph_width_small(char x)
 {
-    unsigned int glyph_width = BigFont[GLYPH_WIDTH_INDEX];
+    unsigned int glyph_width = DEFAULT_FONT[GLYPH_WIDTH_INDEX];
     unsigned int glyph_width_bytes = (glyph_width+7)/8;
-    unsigned int glyph_height = BigFont[GLYPH_HEIGHT_INDEX];
+    unsigned int glyph_height = DEFAULT_FONT[GLYPH_HEIGHT_INDEX];
     unsigned int glyph_size = 1 + ((glyph_width/8) * glyph_height);
-    unsigned int glyph_num = x - BigFont[GLYPH_OFFSET_INDEX];
-    if (glyph_num > BigFont[GLYPH_NUM_GLYPHS_INDEX])
+    unsigned int glyph_num = x - DEFAULT_FONT[GLYPH_OFFSET_INDEX];
+    if (glyph_num > DEFAULT_FONT[GLYPH_NUM_GLYPHS_INDEX])
     {
         return;
     }
-    const uint8_t *p_glyph = &BigFont[GLYPH_START_INDEX + (glyph_size * glyph_num)];
+    const uint8_t *p_glyph = &DEFAULT_FONT[GLYPH_START_INDEX + (glyph_size * glyph_num)];
     size_t max_width = 0;
-    printf("Char '%c' : %u given, ", x, p_glyph[0]);
+    size_t max_padding = 16;
+    printf("\nChar '%c' : %u given\n", x, p_glyph[0]);
+    printf("   0         1\n");
+    printf("   01234567890123456\n");
     for(unsigned int y = 0; y < glyph_height; y++)
     {
         uint16_t row = p_glyph[1 + (y * glyph_width_bytes)];
         row = row << 8;
         row |= p_glyph[2 + (y * glyph_width_bytes)];
+        printf("%02u:%c%c%c%c%c%c%c%c",
+            y,
+            (row & 0x8000) ? '*' : ' ',
+            (row & 0x4000) ? '*' : ' ',
+            (row & 0x2000) ? '*' : ' ',
+            (row & 0x1000) ? '*' : ' ',
+            (row & 0x0800) ? '*' : ' ',
+            (row & 0x0400) ? '*' : ' ',
+            (row & 0x0200) ? '*' : ' ',
+            (row & 0x0100) ? '*' : ' '
+            );
+        printf("%c%c%c%c%c%c%c%c\n",
+            (row & 0x80) ? '*' : ' ',
+            (row & 0x40) ? '*' : ' ',
+            (row & 0x20) ? '*' : ' ',
+            (row & 0x10) ? '*' : ' ',
+            (row & 0x08) ? '*' : ' ',
+            (row & 0x04) ? '*' : ' ',
+            (row & 0x02) ? '*' : ' ',
+            (row & 0x01) ? '*' : ' '
+            );
         size_t width = 16;
         while((row & 0x01) == 0)
         {
@@ -171,7 +228,34 @@ void font_glyph_width_small(char x)
             max_width = width;
         }
     }
-    printf("%u measured,\n", max_width + 1);
+    for(unsigned int y = 0; y < glyph_height; y++)
+    {
+        uint16_t row = p_glyph[1 + (y * glyph_width_bytes)];
+        row = row << 8;
+        row |= p_glyph[2 + (y * glyph_width_bytes)];
+        size_t padding = 0;
+        while((row & 0x8000) == 0)
+        {
+            padding++;
+            row = row << 1;
+            row |= 1;
+        }
+        if (padding < max_padding)
+        {
+            max_padding = padding;
+        }
+    }
+    printf("%u, ", max_width + 1 - max_padding);
+    for(unsigned int y = 0; y < glyph_height; y++)
+    {
+        uint16_t row = p_glyph[1 + (y * glyph_width_bytes)];
+        row = row << 8;
+        row |= p_glyph[2 + (y * glyph_width_bytes)];
+        row = row << max_padding;
+        printf("0x%02x, 0x%02x, ", (row >> 8) & 0xFF, row & 0xFF);
+    }
+    printf(" // '%c'\n", x);
+    printf("Width %u, padding %u\n", max_width + 1, max_padding);
 }
 
 /**************************************************

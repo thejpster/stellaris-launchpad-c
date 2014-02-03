@@ -111,7 +111,8 @@ sources = [
     "drivers/misc/src/misc.c",
     "drivers/timers/src/timers.c",
     "drivers/uart/src/uart.c",
-    "font/src/BigFont.c",
+    # "font/src/BigFont.c", # We don't use this font
+    "font/src/hallfetica.c",
     "font/src/font.c",
     "font/src/SevenSeg_XXXL_Num.c",
     "menu/src/menu.c",
