@@ -1,4 +1,14 @@
 """
+Builds a simple application which tests LCD rendering code.
+
+This will build the example:
+    $ scons
+
+This will start the LCD renderer (requires wxPython)
+    $ mkfifo lcd_fifo
+    $ ./lcd_render.py &
+    $ ./lcd_test
+
 Copyright (c) 2012-2013 theJPster (github@thejpster.org.uk)
 
 Permission is hereby granted, free of charge, to any person obtaining a
@@ -20,5 +30,31 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
 
-VariantDir('bin', '..', duplicate=0)
-SConscript('bin/lcd_test/SConscript')
+env = Environment()
+
+env.Append(CPPPATH = ['.', '../src'])
+env.Append(CCFLAGS=[
+    "-g",
+    "-std=c99"
+    ])
+env.Append(CPPDEFINES=[
+    "LCD_ROTATE_DISPLAY"
+    ])
+
+verbose = ARGUMENTS.get("VERBOSE", 0)
+if not verbose:
+    env.Replace(CCCOMSTR="[CC] $SOURCE -> $TARGET")
+    env.Replace(LINKCOMSTR="[LD] $TARGET")
+
+sources = [
+    "../src/font/src/font.c",
+    "../src/menu/src/menu.c",
+    "../src/menu/src/menu_lexgo_bonus.c",
+    "../src/font/src/BigFont.c",
+    "../src/font/src/hallfetica.c",
+    "../src/font/src/SevenSeg_XXXL_Num.c",
+    "../src/drivers/lcd/src/lcd_sim.c",
+    "lcd_test.c",
+]
+
+env.Program('lcd_test', sources)
