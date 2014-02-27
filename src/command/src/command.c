@@ -86,7 +86,8 @@ static uint32_t parse_int(const char* str);
 
 static int fn_help(unsigned int argc, char* argv[]);
 static int fn_lcdcol(unsigned int argc, char* argv[]);
-static int fn_lcdpx(unsigned int argc, char* argv[]);
+static int fn_lcdpwm(unsigned int argc, char* argv[]);
+static int fn_lcdon(unsigned int argc, char* argv[]);
 static int fn_gpio(unsigned int argc, char* argv[]);
 static int fn_tacho(unsigned int argc, char* argv[]);
 static int fn_clocks(unsigned int argc, char* argv[]);
@@ -110,7 +111,8 @@ static size_t g_buffer_used = 0;
 static const struct command_t g_commands[] = {
     { "help", fn_help, "- Prints help" },
     { "lcdcol", fn_lcdcol, "- Paints a rectangle in the given colour" },
-    { "lcdpx", fn_lcdpx, "- Gets/Sets LCD pixel width" },
+    { "lcdpwm", fn_lcdpwm, "- Sets LCD brightness" },
+    { "lcdon", fn_lcdon, "- Turns LCD on/off" },
     { "gpio", fn_gpio, "- Set GPIO" },
     { "tacho", fn_tacho, "- Set tacho output" },
     { "clocks", fn_clocks, "- Display clocks" },
@@ -300,6 +302,10 @@ static uint32_t parse_int(const char* str)
         {
             result += 10 + (c - 'a');
         }
+        else
+        {
+            break;
+        }
         str++;
     }
     return result;
@@ -359,14 +365,31 @@ static int fn_lcdcol(unsigned int argc, char* argv[])
     return 0;
 }
 
-static int fn_lcdpx(unsigned int argc, char* argv[])
+static int fn_lcdpwm(unsigned int argc, char* argv[])
 {
     int result = 0;
     if (argc == 2)
     {
-        enum lcd_pixel_width_t width = parse_int(argv[1]);
-        PRINTF("Pixel width = %u\n", width);
-        lcd_set_pixel_width(width);
+        uint8_t brightness = parse_int(argv[1]);
+        PRINTF("Brightness = %u (0x%02x)\n", brightness, brightness);
+        lcd_set_backlight(brightness);
+    }
+    else
+    {
+        PRINTF("Takes 1 argument\n");
+        result = 1;
+    }
+    return result;
+}
+
+static int fn_lcdon(unsigned int argc, char* argv[])
+{
+    int result = 0;
+    if (argc == 2)
+    {
+        bool enabled = (parse_int(argv[1]) != 0);
+        PRINTF("LCD %s\n", enabled ? "on" : "off");
+        main_lcd_control(enabled);
     }
     else
     {
@@ -502,9 +525,9 @@ static int fn_digits(unsigned int argc, char* argv[])
         lcd_colour_t col = parse_int(argv[3]);
         uint16_t number = parse_int(argv[4]);
         PRINTF("Drawing %u @ %u,%u in %06lx\n", number, x, y, col);
-        then = get_counter();
+        then = main_get_counter();
         font_draw_number_large(x, y, number, 5, col, LCD_BLACK);
-        now = get_counter();
+        now = main_get_counter();
         PRINTF("Took %u ms\n", TIMER_TICKS_TO_MS(now - then));
     }
     return result;
@@ -537,9 +560,9 @@ static int fn_text(unsigned int argc, char* argv[])
         }
         p_message = argv[4];
         PRINTF("Drawing '%s' @ %u,%u in %06lx\n", p_message, x, y, col);
-        then = get_counter();
+        then = main_get_counter();
         font_draw_text_small(x, y, p_message, col, LCD_BLACK, false);
-        now = get_counter();
+        now = main_get_counter();
         PRINTF("Took %u ms\n", TIMER_TICKS_TO_MS(now - then));
     }
     return result;
@@ -559,9 +582,9 @@ static int fn_cal(unsigned int argc, char* argv[])
         uint32_t delay;
         delay = parse_int(argv[1]);
         PRINTF("Delaying 0x%08" PRIx32 " (%" PRIu32 ") milliseconds\n", delay, delay);
-        then = get_counter();
+        then = main_get_counter();
         delay_ms(delay);
-        now = get_counter();
+        now = main_get_counter();
         PRINTF("Took %u ms\n", TIMER_TICKS_TO_MS(now - then));
     }
     return result;

@@ -44,7 +44,7 @@ extern "C" {
 * Public Defines
 ***************************************************/
 
-/* The rate at which get_counter() ticks in Hz */
+/* The rate at which main_get_counter() ticks in Hz */
 #define TICK_RATE (CLOCK_RATE / 64)
 
 #define TICKS_PER_MS (TICK_RATE / 1000)
@@ -65,12 +65,14 @@ extern "C" {
 
 void main_set_tacho(uint32_t timer_ticks);
 
-uint32_t get_counter(void);
+uint32_t main_get_counter(void);
 
 bool main_menu_close(
     const struct menu_t *p_menu,
     const struct menu_item_t *p_menu_item
 );
+
+void main_lcd_control(bool enabled);
 
 void main_fake_short_press(void);
 

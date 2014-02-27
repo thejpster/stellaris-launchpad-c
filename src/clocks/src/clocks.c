@@ -120,7 +120,7 @@ void clocks_init(void)
     {
         trip_edges[i] = EDGES_PER_TENTH_MILE;
         /* @todo these are placeholders. Write this. */
-        trip[i] = (i * 1000) * CLOCKS_DISTANCE_SCALE;
+        trip[i] = ((i+1) * 1000) * CLOCKS_DISTANCE_SCALE;
     }
 }
 
@@ -178,7 +178,7 @@ void clocks_get(struct clocks_state_t *p_state)
 void clocks_timer_tick(void)
 {
     /* Zero stalled input readings */
-    uint32_t now = get_counter();
+    uint32_t now = main_get_counter();
     if ((now - speedo.last_seen) > MAX_PERIOD)
     {
         speedo.period = STALLED;
@@ -197,7 +197,7 @@ void clocks_timer_tick(void)
  */
 void clocks_speedo_edge(void)
 {
-    uint32_t now = get_counter();
+    uint32_t now = main_get_counter();
     speedo.period = now - speedo.last_seen;
     if (speedo.period < MIN_PERIOD)
     {
@@ -222,7 +222,7 @@ void clocks_speedo_edge(void)
  */
 void clocks_tacho_edge(void)
 {
-    uint32_t now = get_counter();
+    uint32_t now = main_get_counter();
     tacho.period = now - tacho.last_seen;
     if (tacho.period < MIN_PERIOD)
     {

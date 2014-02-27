@@ -152,12 +152,8 @@ void gpio_enable_peripherals(void)
 void gpio_enable_buttons(void)
 {
     // enable digital for button pins
-    gpio_make_input(BUTTON_ONE);
-    gpio_make_input(BUTTON_TWO);
-
-    // Enable weak pullups
-    register_map[GPIO_GET_PORT(BUTTON_ONE)]->DR2R_R |= GPIO_GET_PIN(BUTTON_ONE) | GPIO_GET_PIN(BUTTON_TWO);
-    register_map[GPIO_GET_PORT(BUTTON_ONE)]->PUR_R |= GPIO_GET_PIN(BUTTON_ONE) | GPIO_GET_PIN(BUTTON_TWO);
+    gpio_make_input_pullup(BUTTON_ONE);
+    gpio_make_input_pullup(BUTTON_TWO);
 }
 
 void gpio_enable_leds(void)
@@ -320,6 +316,17 @@ void gpio_make_input(gpio_io_pin_t pin)
     register_map[port]->DEN_R |= mask;
     register_map[port]->DIR_R &= ~mask;
     gpio_force_gpio(pin);
+}
+
+/*
+ * Set pin as input with a pullup.
+ */
+void gpio_make_input_pullup(gpio_io_pin_t pin)
+{
+    gpio_make_input(pin);
+    // Enable weak pullups
+    register_map[GPIO_GET_PORT(pin)]->DR2R_R |= GPIO_GET_PIN(pin);
+    register_map[GPIO_GET_PORT(pin)]->PUR_R |= GPIO_GET_PIN(pin);
 }
 
 /*

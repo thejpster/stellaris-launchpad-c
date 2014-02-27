@@ -141,6 +141,11 @@ extern void gpio_make_output(gpio_io_pin_t pin, int level);
 extern void gpio_make_input(gpio_io_pin_t pin);
 
 /*
+ * Set pin as input with a pullup.
+ */
+extern void gpio_make_input_pullup(gpio_io_pin_t pin);
+
+/*
  * Remove any peripheral connected to this pin.
  */
 void gpio_force_gpio(gpio_io_pin_t pin);

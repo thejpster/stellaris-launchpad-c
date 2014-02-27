@@ -88,6 +88,8 @@
 #define LCD_DATA6         GPIO_MAKE_IO_PIN(GPIO_PORT_A, 6)
 #define LCD_DATA7         GPIO_MAKE_IO_PIN(GPIO_PORT_A, 7)
 
+#define LCD_EN            GPIO_MAKE_IO_PIN(GPIO_PORT_E, 3)
+
 /**************************************************
 * Data Types
 **************************************************/
@@ -214,6 +216,8 @@ static void make_bus_input(void);
  */
 int lcd_init(void)
 {
+    /* Turn on LCD */
+
     PRINTF("Wait...\n");
 
     delay_ms(1500);
@@ -288,6 +292,9 @@ void lcd_deinit(void)
 #endif
 
     make_bus_input();
+
+    /* Turn off LCD */
+    gpio_make_output(LCD_EN, 1);
 }
 
 /**
@@ -363,12 +370,16 @@ void lcd_get_vert_period(struct lcd_period_t *p_period)
 
 void lcd_on(void)
 {
-    do_command(CMD_ON_DISPLAY, NULL, 0, NULL, 0);
+    do_command(CMD_EXIT_SLEEP, NULL, 0, NULL, 0);
+    /* As required by SSD1961 manual (well, it says 5ms) */
+    delay_ms(10);
 }
 
 void lcd_off(void)
 {
-    do_command(CMD_BLANK_DISPLAY, NULL, 0, NULL, 0);
+    do_command(CMD_ENT_SLEEP, NULL, 0, NULL, 0);
+    /* As required by SSD1961 manual (well, it says 5ms) */
+    delay_ms(10);
 }
 
 void lcd_get_dbc_conf(struct lcd_dbc_conf_t *p_dbc)
