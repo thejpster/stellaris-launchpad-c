@@ -6,15 +6,18 @@
 # Build outputs
 /bin
 
+# LCD test build outputs
+/lcd_test/bin
+
 # Sublime text workspace
 /launchpad.sublime-workspace
 
 # Scons temporaries
 /.sconsign.dblite
+/lcd_test/.sconsign.dblite
 
 # CTags
-/.tags
-/.tags_sorted_by_file
+/.tags*
 
 # Object files
 *.o
