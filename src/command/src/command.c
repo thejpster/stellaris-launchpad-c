@@ -589,7 +589,7 @@ static int fn_cal(unsigned int argc, char* argv[])
 
 static int fn_menu(unsigned int argc, char* argv[])
 {
-    menu_lexgo_bonus_init();
+    main_menu_open();
     return 0;
 }
 

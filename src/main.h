@@ -67,6 +67,8 @@ void main_set_tacho(uint32_t timer_ticks);
 
 uint32_t main_get_counter(void);
 
+void main_menu_open(void);
+
 bool main_menu_close(
     const struct menu_t *p_menu,
     const struct menu_item_t *p_menu_item

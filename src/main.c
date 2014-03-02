@@ -72,11 +72,17 @@
 * Defines
 ***************************************************/
 
-#define IN_0 GPIO_MAKE_IO_PIN(GPIO_PORT_D, 6) /* Speed input */
-#define IN_1 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 0) /* Tacho input */
-#define IN_2 GPIO_MAKE_IO_PIN(GPIO_PORT_F, 4) /* Lights On */
-#define IN_3 GPIO_MAKE_IO_PIN(GPIO_PORT_B, 4) /* Button pushed */
-#define IN_4 GPIO_MAKE_IO_PIN(GPIO_PORT_F, 0) /* Ignition On */
+#define IN_0 GPIO_MAKE_IO_PIN(GPIO_PORT_D, 6) 
+#define IN_1 GPIO_MAKE_IO_PIN(GPIO_PORT_E, 0) 
+#define IN_2 GPIO_MAKE_IO_PIN(GPIO_PORT_F, 4) 
+#define IN_3 GPIO_MAKE_IO_PIN(GPIO_PORT_B, 4) 
+#define IN_4 GPIO_MAKE_IO_PIN(GPIO_PORT_F, 0) 
+
+#define IN_SPEED    IN_0  /* Speed input */
+#define IN_TACHO    IN_1  /* Tacho input */
+#define IN_LIGHTS   IN_2  /* Lights On - active low */
+#define IN_BUTTON   IN_3  /* Button pushed - active low */
+#define IN_IGNITION IN_4  /* Ignition On - active low */
 
 #define POWER_EN GPIO_MAKE_IO_PIN(GPIO_PORT_E, 4) /* Power latch */
 
@@ -229,10 +235,11 @@ int main(void)
     PRINTF("***********************************\n");
 
     lcd_init();
+    main_lcd_control(false);
     clocks_init();
 
-    gpio_register_handler(IN_0, GPIO_INTERRUPT_MODE_BOTH, input_interrupt, NULL, 0);
-    gpio_register_handler(IN_1, GPIO_INTERRUPT_MODE_BOTH, input_interrupt, NULL, 1);
+    gpio_register_handler(IN_SPEED, GPIO_INTERRUPT_MODE_BOTH, input_interrupt, NULL, 0);
+    gpio_register_handler(IN_TACHO, GPIO_INTERRUPT_MODE_BOTH, input_interrupt, NULL, 1);
 
     timer_configure(TIMER_WIDE_0, &g_timer_config);
     timer_register_handler(TIMER_WIDE_0, TIMER_A, timer_interrupt, NULL, 0);
@@ -253,49 +260,67 @@ int main(void)
     timer_interrupt_enable(TIMER_WIDE_0, TIMER_B_INTERRUPT_TIMEOUT);
     timer_enable(TIMER_WIDE_0, TIMER_A);
 
-    screen_furniture();
-    screen_redraw();
-
     uint32_t then, now, diff;
     then = main_get_counter();
     while (1)
     {
-        now = main_get_counter();
-        diff = now - then;
-        if (diff > DELAY_TICKS)
+        if (g_screen_mode == MODE_OFF)
         {
-            if (g_screen_mode == MODE_SPEEDO)
+            /* Check whether to leave off mode */
+            /* Don't do anything else - count mileage, etc */
+            if (gpio_read_input(IN_IGNITION) == 0)
             {
-                screen_redraw();
-            }
-            then = now;
-        }
-        while (!circbuffer_isempty(&g_uart_cb))
-        {
-            char c = (char) circbuffer_read(&g_uart_cb);
-            command_handle_char(c);
-        }
-        if (g_short_presses)
-        {
-            g_short_presses--;
-            if (g_screen_mode == MODE_MENU)
-            {
-                menu_keypress(MENU_KEYPRESS_DOWN);
+                /* pin high = ignition on */
+                main_lcd_control(true);
+                /* And re-enable timer interrupts? */
             }
         }
-        if (g_long_presses)
+        else
         {
-            /* On long press, enter menu system or select */
-            g_long_presses--;
-            if (g_screen_mode == MODE_SPEEDO)
+            now = main_get_counter();
+            diff = now - then;
+            if (diff > DELAY_TICKS)
             {
-                menu_lexgo_bonus_init();
-                g_screen_mode = MODE_MENU;
+                if (g_screen_mode == MODE_SPEEDO)
+                {
+                    screen_redraw();
+                }
+                then = now;
             }
-            else if (g_screen_mode == MODE_MENU)
+            while (!circbuffer_isempty(&g_uart_cb))
             {
-                menu_keypress(MENU_KEYPRESS_ENTER);
+                char c = (char) circbuffer_read(&g_uart_cb);
+                command_handle_char(c);
             }
+            if (g_short_presses)
+            {
+                g_short_presses--;
+                if (g_screen_mode == MODE_MENU)
+                {
+                    menu_keypress(MENU_KEYPRESS_DOWN);
+                }
+            }
+            if (g_long_presses)
+            {
+                /* On long press, enter menu system or select */
+                g_long_presses--;
+                if (g_screen_mode == MODE_SPEEDO)
+                {
+                    main_menu_open();
+                }
+                else if (g_screen_mode == MODE_MENU)
+                {
+                    menu_keypress(MENU_KEYPRESS_ENTER);
+                }
+            }
+            /* Check whether to leave off mode */
+            if (gpio_read_input(IN_IGNITION))
+            {
+                /* pin high = ignition off */
+                main_lcd_control(false);
+                /* Disable timer interrupts here? */
+            }
+
         }
         /* Should we sleep the CPU here? */
         delay_ms(10);
@@ -358,6 +383,12 @@ uint32_t main_get_counter(void)
     return timer_val;
 }
 
+void main_menu_open(void)
+{
+    menu_lexgo_bonus_init();
+    g_screen_mode = MODE_MENU;
+}
+
 bool main_menu_close(
     const struct menu_t *p_menu,
     const struct menu_item_t *p_menu_item
@@ -366,6 +397,7 @@ bool main_menu_close(
     g_screen_mode = false;
     lcd_paint_clear_screen();
     screen_furniture();
+    screen_redraw();
     return false;
 }
 
@@ -449,7 +481,7 @@ static void timer_interrupt(
         gpio_set_output(LED_RED, ((g_overflow_count & 0x03) == 0) ? 1 : 0);
         timer_interrupt_clear(timer, TIMER_A_INTERRUPT_TIMEOUT);
         /* Debounce the button */
-        if (gpio_read_input(IN_2) == 0)
+        if (gpio_read_input(IN_BUTTON) == 0)
         {
             g_button_count++;
             if (g_button_count == LONG_PRESS)
@@ -462,7 +494,7 @@ static void timer_interrupt(
             if ((g_button_count >= SHORT_PRESS) && (g_button_count < LONG_PRESS))
             {
                 /* Enough for a short press but not for a long press */
-                g_short_presses;
+                g_short_presses++;
             }
             g_button_count = 0;
         }
