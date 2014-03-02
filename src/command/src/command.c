@@ -480,8 +480,7 @@ static int fn_clocks(unsigned int argc, char* argv[])
 
 static int fn_rpm(unsigned int argc, char* argv[])
 {
-    const double tacho_power = 1.0906;
-    const double tacho_ratio = 1679251179;
+    const unsigned long factor = 790000;
     int result = 0;
     if (argc != 2)
     {
@@ -494,9 +493,7 @@ static int fn_rpm(unsigned int argc, char* argv[])
         uint32_t period;
         if (rpm > 0)
         {
-            double p = pow(rpm, tacho_power);
-            double inter = tacho_ratio / p;
-            period = (uint32_t) inter;
+            period = (factor / rpm) * 1000;
         }
         else
         {

@@ -305,6 +305,16 @@ int main(void)
     return 0;
 }
 
+/*
+ * With a 47k pull-down on the output pin, we get the following results:
+ *
+ * 158000 ticks/period = 5,000 rev/minute
+ * 316000 ticks/period = 2,500 rev/minute
+ * => constant is 790,000,000.
+ * => 1000 rpm = 790000
+ * => 4250 rpm = 185885
+ * 
+ */
 void main_set_tacho(uint32_t timer_ticks)
 {
     if (timer_ticks && !g_output_rate)
