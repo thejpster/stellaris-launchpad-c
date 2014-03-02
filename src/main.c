@@ -96,7 +96,7 @@
 #define MAX_UART_CHARS 16
 
 #define SHORT_PRESS 3
-#define LONG_PRESS 8
+#define LONG_PRESS 100
 
 /* UI stuff */
 #define ORANGE 0xe09512
@@ -115,6 +115,9 @@
 #define SPEED_BAR_X2 (SPEED_BAR_X + SPEED_BAR_EDGE + SPEED_BAR_WIDTH + SPEED_BAR_EDGE - 1)
 #define SPEED_BAR_Y2 (SPEED_BAR_Y + SPEED_BAR_EDGE + SPEED_BAR_HEIGHT + SPEED_BAR_EDGE - 1)
 #define SPEED_BAR_MAX_SPEED 120
+
+#define DIM_BACKLIGHT 0x40
+#define FULL_BACKLIGHT 0xFF
 
 /**************************************************
 * Data Types
@@ -192,6 +195,8 @@ static volatile unsigned int g_short_presses;
 static volatile unsigned int g_long_presses;
 
 static enum screen_mode_t g_screen_mode = MODE_SPEEDO;
+
+static bool g_bright_mode = true;
 
 /**************************************************
 * Public Functions
@@ -287,11 +292,32 @@ int main(void)
                 }
                 then = now;
             }
+
             while (!circbuffer_isempty(&g_uart_cb))
             {
                 char c = (char) circbuffer_read(&g_uart_cb);
                 command_handle_char(c);
             }
+
+            /* Debounce the button */
+            if (gpio_read_input(IN_BUTTON) == 0)
+            {
+                g_button_count++;
+                if (g_button_count == LONG_PRESS)
+                {
+                    g_long_presses++;
+                }
+            }
+            else
+            {
+                if ((g_button_count >= SHORT_PRESS) && (g_button_count < LONG_PRESS))
+                {
+                    /* Enough for a short press but not for a long press */
+                    g_short_presses++;
+                }
+                g_button_count = 0;
+            }
+
             if (g_short_presses)
             {
                 g_short_presses--;
@@ -300,6 +326,7 @@ int main(void)
                     menu_keypress(MENU_KEYPRESS_DOWN);
                 }
             }
+
             if (g_long_presses)
             {
                 /* On long press, enter menu system or select */
@@ -313,6 +340,18 @@ int main(void)
                     menu_keypress(MENU_KEYPRESS_ENTER);
                 }
             }
+
+            if (g_bright_mode && !gpio_read_input(IN_LIGHTS))
+            {
+                g_bright_mode = false;
+                lcd_set_backlight(DIM_BACKLIGHT);
+            }
+            else if (!g_bright_mode && gpio_read_input(IN_LIGHTS))
+            {
+                g_bright_mode = true;
+                lcd_set_backlight(FULL_BACKLIGHT);
+            }
+
             /* Check whether to leave off mode */
             if (gpio_read_input(IN_IGNITION))
             {
@@ -407,7 +446,7 @@ void main_lcd_control(bool enabled)
     {
         PRINTF("Screen on\n");
         lcd_on();
-        lcd_set_backlight(0xFF);
+        lcd_set_backlight(g_bright_mode ? FULL_BACKLIGHT : DIM_BACKLIGHT);
         screen_furniture();
         screen_redraw();
         g_screen_mode = MODE_SPEEDO;
@@ -480,24 +519,6 @@ static void timer_interrupt(
         /* Blink on 1 overflow in 4, or 250ms per 1000ms */
         gpio_set_output(LED_RED, ((g_overflow_count & 0x03) == 0) ? 1 : 0);
         timer_interrupt_clear(timer, TIMER_A_INTERRUPT_TIMEOUT);
-        /* Debounce the button */
-        if (gpio_read_input(IN_BUTTON) == 0)
-        {
-            g_button_count++;
-            if (g_button_count == LONG_PRESS)
-            {
-                g_long_presses++;
-            }
-        }
-        else
-        {
-            if ((g_button_count >= SHORT_PRESS) && (g_button_count < LONG_PRESS))
-            {
-                /* Enough for a short press but not for a long press */
-                g_short_presses++;
-            }
-            g_button_count = 0;
-        }
         clocks_timer_tick();
     }
     else
