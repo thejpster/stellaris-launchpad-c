@@ -2,7 +2,10 @@
 *
 * Stellaris Launchpad Example Project
 *
-* Copyright (c) 2012 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2013-2014 theJPster (www.thejpster.org.uk)
+*
+* This module handles the various counter/timer peripherals
+* in the LM4F.
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -22,22 +25,21 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
+* References:
 *
-* This module handles the various counter/timer peripherals
-* in the LM4F.
-*
+*     [1] - Stellaris® LM4F121H5QR Microcontroller
+*           Data Sheet.
+*           http://www.ti.com/lit/ds/symlink/lm4f120h5qr.pdf
 *****************************************************/
 
 /**************************************************
 * Includes
 ***************************************************/
 
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
+#include "util/util.h"
 
-#include "misc/misc.h"
-#include "timers/timers.h"
+#include "drivers/misc/misc.h"
+#include "drivers/timers/timers.h"
 
 /**************************************************
 * Defines
@@ -80,11 +82,18 @@ typedef struct timer_registers_t
     const reg_t TBPV;
 } timer_registers_t;
 
+typedef struct timer_interrupt_list_t
+{
+    timer_interrupt_handler_t handler_fn;
+    uint32_t n_context;
+    void *p_context;
+} timer_interrupt_list_t;
+
 /**************************************************
 * Function Prototypes
 **************************************************/
 
-/* None */
+static void handle_interrupt(timer_module_t timer, timer_ab_t ab);
 
 /**************************************************
 * Public Data
@@ -95,6 +104,8 @@ typedef struct timer_registers_t
 /**************************************************
 * Private Data
 **************************************************/
+
+static timer_interrupt_list_t interrupt_handlers[TIMER_NUM_TIMERS][2];
 
 static timer_registers_t *const timers[TIMER_NUM_TIMERS] =
 {
@@ -112,6 +123,23 @@ static timer_registers_t *const timers[TIMER_NUM_TIMERS] =
     (timer_registers_t *) &WTIMER5_CFG_R
 };
 
+/* See table 2-9 in [1] */
+static const int timer_int_map[TIMER_NUM_TIMERS][2] =
+{
+    { 19, 20 },
+    { 21, 22 },
+    { 23, 24 },
+    { 35, 36 },
+    { 70, 71 },
+    { 92, 93 },
+    { 94, 95 },
+    { 96, 97 },
+    { 98, 99 },
+    { 100, 101 },
+    { 102, 103 },
+    { 104, 105 }    
+};
+
 /**************************************************
 * Public Functions
 ***************************************************/
@@ -126,7 +154,7 @@ void timer_configure(timer_module_t timer, const timer_config_t *p_config)
 {
     timer_registers_t *p_timer = timers[timer];
 
-    switch(timer)
+    switch (timer)
     {
     case TIMER_0:
         SYSCTL_RCGCTIMER_R = SYSCTL_RCGCTIMER_R0;
@@ -181,10 +209,10 @@ void timer_configure(timer_module_t timer, const timer_config_t *p_config)
         /* The default */
         break;
     case TIMER_RTC:
-        p_timer->CFG |= 0x01;
+        SET_BITS(p_timer->CFG, 0x01);
         break;
     case TIMER_SPLIT:
-        p_timer->CFG |= 0x04;
+        SET_BITS(p_timer->CFG, 0x04);
         break;
     }
 
@@ -192,79 +220,79 @@ void timer_configure(timer_module_t timer, const timer_config_t *p_config)
     switch (p_config->timer_a.type)
     {
     case TIMER_SPLIT_ONE_SHOT:
-        p_timer->TAMR |= TIMER_TAMR_TAMR_1_SHOT;
+        SET_BITS(p_timer->TAMR, TIMER_TAMR_TAMR_1_SHOT);
         break;
     case TIMER_SPLIT_PERIODIC:
-        p_timer->TAMR |= TIMER_TAMR_TAMR_PERIOD;
+        SET_BITS(p_timer->TAMR, TIMER_TAMR_TAMR_PERIOD);
         break;
     case TIMER_SPLIT_CAPTURE_COUNT:
-        p_timer->TAMR |= TIMER_TAMR_TAMR_CAP;
+        SET_BITS(p_timer->TAMR, TIMER_TAMR_TAMR_CAP);
         break;
     case TIMER_SPLIT_CAPTURE_TIME:
-        p_timer->TAMR |= TIMER_TAMR_TAMR_CAP;
-        p_timer->TAMR |= TIMER_TAMR_TACMR;
+        SET_BITS(p_timer->TAMR, TIMER_TAMR_TAMR_CAP);
+        SET_BITS(p_timer->TAMR, TIMER_TAMR_TACMR);
         break;
     case TIMER_SPLIT_PWM:
-        p_timer->TAMR |= TIMER_TAMR_TAMR_PERIOD;
-        p_timer->TAMR |= TIMER_TAMR_TAAMS;
+        SET_BITS(p_timer->TAMR, TIMER_TAMR_TAMR_PERIOD);
+        SET_BITS(p_timer->TAMR, TIMER_TAMR_TAAMS);
         break;
     }
 
     if (p_config->timer_a.count_up)
     {
-        p_timer->TAMR |= TIMER_TAMR_TACDIR;
+        SET_BITS(p_timer->TAMR, TIMER_TAMR_TACDIR);
     }
     if (p_config->timer_a.match_interrupt)
     {
-        p_timer->TAMR |= TIMER_TAMR_TAMIE;
+        SET_BITS(p_timer->TAMR, TIMER_TAMR_TAMIE);
     }
     if (p_config->timer_a.wait_on_trigger)
     {
-        p_timer->TAMR |= TIMER_TAMR_TAWOT;
+        SET_BITS(p_timer->TAMR, TIMER_TAMR_TAWOT);
     }
     if (p_config->timer_a.snap_shot_mode)
     {
-        p_timer->TAMR |= TIMER_TAMR_TASNAPS;
+        SET_BITS(p_timer->TAMR, TIMER_TAMR_TASNAPS);
     }
     if (p_config->timer_a.interval_load_write)
     {
-        p_timer->TAMR |= TIMER_TAMR_TAILD;
+        SET_BITS(p_timer->TAMR, TIMER_TAMR_TAILD);
     }
     if (p_config->timer_a.pwm_interrupt)
     {
-        p_timer->TAMR |= TIMER_TAMR_TAPWMIE;
+        SET_BITS(p_timer->TAMR, TIMER_TAMR_TAPWMIE);
     }
     if (p_config->timer_a.match_register_update)
     {
-        p_timer->TAMR |= TIMER_TAMR_TAMRSU;
+        SET_BITS(p_timer->TAMR, TIMER_TAMR_TAMRSU);
     }
     if (p_config->timer_a.legacy_operation)
     {
-        p_timer->TAMR |= TIMER_TAMR_TAPLO;
+        SET_BITS(p_timer->TAMR, TIMER_TAMR_TAPLO);
     }
     switch (p_config->timer_a.event_mode)
     {
     case TIMER_EVENT_MODE_POSITIVE:
-        p_timer->CTRL |= TIMER_CTL_TAEVENT_POS;
+        SET_BITS(p_timer->CTRL, TIMER_CTL_TAEVENT_POS);
         break;
     case TIMER_EVENT_MODE_NEGATIVE:
-        p_timer->CTRL |= TIMER_CTL_TAEVENT_NEG;
+        SET_BITS(p_timer->CTRL, TIMER_CTL_TAEVENT_NEG);
         break;
     case TIMER_EVENT_MODE_BOTH:
-        p_timer->CTRL |= TIMER_CTL_TAEVENT_BOTH;
+        SET_BITS(p_timer->CTRL, TIMER_CTL_TAEVENT_BOTH);
         break;
     }
     if (p_config->timer_a.stall_enable)
     {
-        p_timer->CTRL |= TIMER_CTL_TASTALL;
+        SET_BITS(p_timer->CTRL, TIMER_CTL_TASTALL);
     }
     if (p_config->timer_a.output_trigger_enable)
     {
-        p_timer->CTRL |= TIMER_CTL_TAOTE;
+        SET_BITS(p_timer->CTRL, TIMER_CTL_TAOTE);
     }
     if (p_config->timer_a.invert_pwm_output)
     {
-        p_timer->CTRL |= TIMER_CTL_TAPWML;
+        SET_BITS(p_timer->CTRL, TIMER_CTL_TAPWML);
     }
 
     if (p_config->type == TIMER_SPLIT)
@@ -273,86 +301,86 @@ void timer_configure(timer_module_t timer, const timer_config_t *p_config)
         switch (p_config->timer_b.type)
         {
         case TIMER_SPLIT_ONE_SHOT:
-            p_timer->TBMR |= TIMER_TBMR_TBMR_1_SHOT;
+            SET_BITS(p_timer->TBMR, TIMER_TBMR_TBMR_1_SHOT);
             break;
         case TIMER_SPLIT_PERIODIC:
-            p_timer->TBMR |= TIMER_TBMR_TBMR_PERIOD;
+            SET_BITS(p_timer->TBMR, TIMER_TBMR_TBMR_PERIOD);
             break;
         case TIMER_SPLIT_CAPTURE_COUNT:
-            p_timer->TBMR |= TIMER_TBMR_TBMR_CAP;
+            SET_BITS(p_timer->TBMR, TIMER_TBMR_TBMR_CAP);
             break;
         case TIMER_SPLIT_CAPTURE_TIME:
-            p_timer->TBMR |= TIMER_TBMR_TBMR_CAP;
-            p_timer->TBMR |= TIMER_TBMR_TBCMR;
+            SET_BITS(p_timer->TBMR, TIMER_TBMR_TBMR_CAP);
+            SET_BITS(p_timer->TBMR, TIMER_TBMR_TBCMR);
             break;
         case TIMER_SPLIT_PWM:
-            p_timer->TBMR |= TIMER_TBMR_TBMR_PERIOD;
-            p_timer->TBMR |= TIMER_TBMR_TBAMS;
+            SET_BITS(p_timer->TBMR, TIMER_TBMR_TBMR_PERIOD);
+            SET_BITS(p_timer->TBMR, TIMER_TBMR_TBAMS);
             break;
         }
         if (p_config->timer_b.count_up)
         {
-            p_timer->TBMR |= TIMER_TBMR_TBCDIR;
+            SET_BITS(p_timer->TBMR, TIMER_TBMR_TBCDIR);
         }
         if (p_config->timer_b.match_interrupt)
         {
-            p_timer->TBMR |= TIMER_TBMR_TBMIE;
+            SET_BITS(p_timer->TBMR, TIMER_TBMR_TBMIE);
         }
         if (p_config->timer_b.wait_on_trigger)
         {
-            p_timer->TBMR |= TIMER_TBMR_TBWOT;
+            SET_BITS(p_timer->TBMR, TIMER_TBMR_TBWOT);
         }
         if (p_config->timer_b.snap_shot_mode)
         {
-            p_timer->TBMR |= TIMER_TBMR_TBSNAPS;
+            SET_BITS(p_timer->TBMR, TIMER_TBMR_TBSNAPS);
         }
         if (p_config->timer_b.interval_load_write)
         {
-            p_timer->TBMR |= TIMER_TBMR_TBILD;
+            SET_BITS(p_timer->TBMR, TIMER_TBMR_TBILD);
         }
         if (p_config->timer_b.pwm_interrupt)
         {
-            p_timer->TBMR |= TIMER_TBMR_TBPWMIE;
+            SET_BITS(p_timer->TBMR, TIMER_TBMR_TBPWMIE);
         }
         if (p_config->timer_b.match_register_update)
         {
-            p_timer->TBMR |= TIMER_TBMR_TBMRSU;
+            SET_BITS(p_timer->TBMR, TIMER_TBMR_TBMRSU);
         }
         if (p_config->timer_b.legacy_operation)
         {
-            p_timer->TBMR |= TIMER_TBMR_TBPLO;
+            SET_BITS(p_timer->TBMR, TIMER_TBMR_TBPLO);
         }
 
         switch (p_config->timer_b.event_mode)
         {
         case TIMER_EVENT_MODE_POSITIVE:
-            p_timer->CTRL |= TIMER_CTL_TBEVENT_POS;
+            SET_BITS(p_timer->CTRL, TIMER_CTL_TBEVENT_POS);
             break;
         case TIMER_EVENT_MODE_NEGATIVE:
-            p_timer->CTRL |= TIMER_CTL_TBEVENT_NEG;
+            SET_BITS(p_timer->CTRL, TIMER_CTL_TBEVENT_NEG);
             break;
         case TIMER_EVENT_MODE_BOTH:
-            p_timer->CTRL |= TIMER_CTL_TBEVENT_BOTH;
+            SET_BITS(p_timer->CTRL, TIMER_CTL_TBEVENT_BOTH);
             break;
         }
 
         if (p_config->timer_b.stall_enable)
         {
-            p_timer->CTRL |= TIMER_CTL_TBSTALL;
+            SET_BITS(p_timer->CTRL, TIMER_CTL_TBSTALL);
         }
         if (p_config->timer_b.output_trigger_enable)
         {
-            p_timer->CTRL |= TIMER_CTL_TBOTE;
+            SET_BITS(p_timer->CTRL, TIMER_CTL_TBOTE);
         }
         if (p_config->timer_b.invert_pwm_output)
         {
-            p_timer->CTRL |= TIMER_CTL_TBPWML;
+            SET_BITS(p_timer->CTRL, TIMER_CTL_TBPWML);
         }
     }
 
     if (p_config->rtc_stall_enable)
     {
-        p_timer->CTRL |= TIMER_CTL_RTCEN;
+        SET_BITS(p_timer->CTRL, TIMER_CTL_RTCEN);
     }
 }
 
@@ -367,11 +395,11 @@ void timer_enable(timer_module_t timer, timer_ab_t ab)
     timer_registers_t *p_timer = timers[timer];
     if (ab == TIMER_A)
     {
-        p_timer->CTRL |= (1 << 0);
+        SET_BITS(p_timer->CTRL, (1 << 0));
     }
     else
     {
-        p_timer->CTRL |= (1 << 8);
+        SET_BITS(p_timer->CTRL, (1 << 8));
     }
 }
 
@@ -386,11 +414,11 @@ void timer_disable(timer_module_t timer, timer_ab_t ab)
     timer_registers_t *p_timer = timers[timer];
     if (ab == TIMER_A)
     {
-        p_timer->CTRL &= ~(1 << 0);
+        CLEAR_BITS(p_timer->CTRL, (1 << 0));
     }
     else
     {
-        p_timer->CTRL &= ~(1 << 8);
+        CLEAR_BITS(p_timer->CTRL, (1 << 8));
     }
 }
 
@@ -403,7 +431,7 @@ void timer_disable(timer_module_t timer, timer_ab_t ab)
 void timer_interrupt_enable(timer_module_t timer, timer_interrupt_t interrupt)
 {
     timer_registers_t *p_timer = timers[timer];
-    p_timer->IMR |= interrupt;
+    SET_BITS(p_timer->IMR, interrupt);
 }
 
 /*
@@ -415,7 +443,30 @@ void timer_interrupt_enable(timer_module_t timer, timer_interrupt_t interrupt)
 void timer_interrupt_disable(timer_module_t timer, timer_interrupt_t interrupt)
 {
     timer_registers_t *p_timer = timers[timer];
-    p_timer->IMR &= ~interrupt;
+    CLEAR_BITS(p_timer->IMR, interrupt);
+}
+
+/*
+ * Register a function to be called when an interrupt fires. There is one interrupt per timer,
+ * so the handler will need to check what caused the interrupt if multiple interrupts have been enabled.
+ *
+ * @param timer - A timer module (e.g. TIMER_0)
+ * @param ab - Select timer A or timer B.
+ * @param handler - A function to call (in interrupt context)
+ * @param p_context - A pointer argument supplied to the handler
+ * @param n_context - An integer argument supplied to the handler
+ */
+void timer_register_handler(
+    timer_module_t timer,
+    timer_ab_t ab,
+    timer_interrupt_handler_t handler,
+    void *p_context, uint32_t n_context)
+{
+    timer_interrupt_list_t *p = &interrupt_handlers[timer][ab];
+    p->handler_fn = handler;
+    p->p_context = p_context;
+    p->n_context = n_context;
+    enable_interrupt(timer_int_map[timer][ab]);
 }
 
 /*
@@ -594,7 +645,7 @@ uint16_t timer_get_prescale_match(timer_module_t timer, timer_ab_t ab)
     }
 }
 
-/* 
+/*
  * Prescale allows you to extend a split timer by 16 bits. This sets the 16
  * bits that go with timer_set_match().
  *
@@ -722,11 +773,138 @@ uint16_t timer_get_prescale_value(timer_module_t timer, timer_ab_t ab)
     }
 }
 
+void timer_0a_interrupt(void)
+{
+    handle_interrupt(TIMER_0, TIMER_A);
+}
+
+void timer_1a_interrupt(void)
+{
+    handle_interrupt(TIMER_1, TIMER_A);
+}
+
+void timer_2a_interrupt(void)
+{
+    handle_interrupt(TIMER_2, TIMER_A);
+}
+
+void timer_3a_interrupt(void)
+{
+    handle_interrupt(TIMER_3, TIMER_A);
+}
+
+void timer_4a_interrupt(void)
+{
+    handle_interrupt(TIMER_4, TIMER_A);
+}
+
+void timer_5a_interrupt(void)
+{
+    handle_interrupt(TIMER_5, TIMER_A);
+}
+
+void timer_0b_interrupt(void)
+{
+    handle_interrupt(TIMER_0, TIMER_B);
+}
+
+void timer_1b_interrupt(void)
+{
+    handle_interrupt(TIMER_1, TIMER_B);
+}
+
+void timer_2b_interrupt(void)
+{
+    handle_interrupt(TIMER_2, TIMER_B);
+}
+
+void timer_3b_interrupt(void)
+{
+    handle_interrupt(TIMER_3, TIMER_B);
+}
+
+void timer_4b_interrupt(void)
+{
+    handle_interrupt(TIMER_4, TIMER_B);
+}
+
+void timer_5b_interrupt(void)
+{
+    handle_interrupt(TIMER_5, TIMER_B);
+}
+
+void timer_w0a_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_0, TIMER_A);
+}
+
+void timer_w1a_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_1, TIMER_A);
+}
+
+void timer_w2a_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_2, TIMER_A);
+}
+
+void timer_w3a_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_3, TIMER_A);
+}
+
+void timer_w4a_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_4, TIMER_A);
+}
+
+void timer_w5a_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_5, TIMER_A);
+}
+
+void timer_w0b_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_0, TIMER_B);
+}
+
+void timer_w1b_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_1, TIMER_B);
+}
+
+void timer_w2b_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_2, TIMER_B);
+}
+
+void timer_w3b_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_3, TIMER_B);
+}
+
+void timer_w4b_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_4, TIMER_B);
+}
+
+void timer_w5b_interrupt(void)
+{
+    handle_interrupt(TIMER_WIDE_5, TIMER_B);
+}
+
 /**************************************************
 * Private Functions
 ***************************************************/
 
-/* None */
+static void handle_interrupt(timer_module_t timer, timer_ab_t ab)
+{
+    timer_interrupt_list_t *p = &interrupt_handlers[timer][ab];
+    if (p->handler_fn)
+    {
+        p->handler_fn(timer, ab, p->p_context, p->n_context);
+    }
+}
 
 /**************************************************
 * End of file

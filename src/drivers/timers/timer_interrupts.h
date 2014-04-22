@@ -2,7 +2,7 @@
 *
 * Stellaris Launchpad Example Project
 *
-* Copyright (c) 2014 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2013-2014 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -22,29 +22,32 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
+* This module handles the various counter/timer peripherals
+* in the LM4F.
+*
 *****************************************************/
+
+#ifndef TIMER_INTERRUPTS_H_
+#define TIMER_INTERRUPTS_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**************************************************
 * Includes
 ***************************************************/
 
-#include "util/util.h"
-#include "../template.h"
+/* None */
 
 /**************************************************
-* Defines
+* Public Defines
 ***************************************************/
 
 /* None */
 
 /**************************************************
-* Data Types
-**************************************************/
-
-/* None */
-
-/**************************************************
-* Function Prototypes
+* Public Data Types
 **************************************************/
 
 /* None */
@@ -56,22 +59,38 @@
 /* None */
 
 /**************************************************
-* Private Data
-**************************************************/
-
-/* None */
-
-/**************************************************
-* Public Functions
+* Public Function Prototypes
 ***************************************************/
+extern void timer_0a_interrupt(void);
+extern void timer_1a_interrupt(void);
+extern void timer_2a_interrupt(void);
+extern void timer_3a_interrupt(void);
+extern void timer_4a_interrupt(void);
+extern void timer_5a_interrupt(void);
+extern void timer_0b_interrupt(void);
+extern void timer_1b_interrupt(void);
+extern void timer_2b_interrupt(void);
+extern void timer_3b_interrupt(void);
+extern void timer_4b_interrupt(void);
+extern void timer_5b_interrupt(void);
+extern void timer_w0a_interrupt(void);
+extern void timer_w1a_interrupt(void);
+extern void timer_w2a_interrupt(void);
+extern void timer_w3a_interrupt(void);
+extern void timer_w4a_interrupt(void);
+extern void timer_w5a_interrupt(void);
+extern void timer_w0b_interrupt(void);
+extern void timer_w1b_interrupt(void);
+extern void timer_w2b_interrupt(void);
+extern void timer_w3b_interrupt(void);
+extern void timer_w4b_interrupt(void);
+extern void timer_w5b_interrupt(void);
 
-/* None */
+#ifdef __cplusplus
+}
+#endif
 
-/**************************************************
-* Private Functions
-***************************************************/
-
-/* None */
+#endif /* ndef TIMER_INTERRUPTS_H_ */
 
 /**************************************************
 * End of file

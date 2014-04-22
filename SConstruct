@@ -2,7 +2,7 @@
 Wrapper around the main Scons file (./src/SConscript) which puts all the
 intermediates in ./bin
 
-Copyright (c) 2012 theJPster (github@thejpster.org.uk)
+Copyright (c) 2012-2014 theJPster (github@thejpster.org.uk)
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),

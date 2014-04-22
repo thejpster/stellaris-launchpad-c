@@ -2,10 +2,7 @@
 *
 * Stellaris Launchpad Example Project
 *
-* Stubs required to make libc link. See
-* ../../gcc-arm-none-eabi-4_6-2012q4/share/doc/html/libc/Stubs.html#Stubs
-*
-* Copyright (c) 2012 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2013-2014 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -25,23 +22,28 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
+* Circular buffer example from Wikipedia (http://en.wikipedia.org/wiki/Circular_buffer).
+* Keeps one slot open.
+*
 *****************************************************/
 
 /**************************************************
 * Includes
 ***************************************************/
 
-#include <stdio.h>
-#include <string.h>
-#include <sys/stat.h>
+#include "util/util.h"
 
-#include "misc/misc.h"
-#include "gpio/gpio.h"
-#include "uart/uart.h"
+#include "circbuffer/circbuffer.h"
 
 /**************************************************
 * Defines
 ***************************************************/
+
+#define INC_AND_WRAP(val, size) (((val) + 1) % (size))
+
+/**************************************************
+* Data Types
+**************************************************/
 
 /* None */
 
@@ -52,94 +54,60 @@
 /* None */
 
 /**************************************************
-* Data Types
+* Public Data
 **************************************************/
 
 /* None */
 
 /**************************************************
-* Public Data
-**************************************************/
-
-extern char _heap_bottom;       /* Defined by the linker */
-extern char _heap_top;          /* Defined by the linker */
-
-/**************************************************
 * Private Data
 **************************************************/
 
-char *heap_end;
+/* None */
 
 /**************************************************
 * Public Functions
 ***************************************************/
 
 /*
- * To use the arm-none-eabi C library, we need to supply this
+ * Will be able to store buffer_len-1 characters.
  */
-void _exit(int status)
+void circbuffer_init(struct circbuffer_t *cb, uint8_t *p_buffer, size_t buffer_len)
 {
-    while(1)
+    cb->size  = buffer_len; /* include empty elem */
+    cb->start = 0;
+    cb->end   = 0;
+    cb->elems = p_buffer;
+}
+
+bool circbuffer_isfull(struct circbuffer_t *cb)
+{
+    return INC_AND_WRAP(cb->end, cb->size) == cb->start;
+}
+
+bool circbuffer_isempty(struct circbuffer_t *cb)
+{
+    return (cb->end == cb->start);
+}
+
+/* Write an element, overwriting oldest element if buffer is full. App can
+   choose to avoid the overwrite by checking circbuffer_isfull(). */
+void circbuffer_write(struct circbuffer_t *cb, uint8_t elem)
+{
+    cb->elems[cb->end] = elem;
+    cb->end = INC_AND_WRAP(cb->end, cb->size);
+    if (cb->end == cb->start)
     {
-        /* Do nothing */
+        cb->start = INC_AND_WRAP(cb->start, cb->size); /* full, overwrite */
     }
 }
 
-/*
- * To use the arm-none-eabi C library, we need to supply this.
- * It allows the heap to grow and shrink.
- */
-caddr_t _sbrk(int incr) {
-    char *prev_heap_end;
-
-    if (heap_end == 0) {
-      heap_end = &_heap_bottom;
-    }
-    prev_heap_end = heap_end;
-    if ((heap_end + incr) > &_heap_top) {
-        /* Flash the red LED to signify heap exhaustion */
-        flash_error(LED_RED, 0, CLOCK_RATE / 20);
-    }
-
-    heap_end += incr;
-    return (caddr_t) prev_heap_end;
-}
-
-/*
- * Allows us to use printf and write to stdout.
- */
-int _write(int file, char *ptr, int len) {
-	if (file == 1)
-	{
-		uart_write(UART_ID_0, ptr, len);
-	}
-	return len;
-}
-
-int _isatty(int file) {
-	return 1;
-}
-
-int _open(const char *name, int flags, int mode) {
-	return -1;
-}
-
-int _close(int file)
+/* Read oldest element. App must ensure !circbuffer_isempty() first. */
+uint8_t circbuffer_read(struct circbuffer_t *cb)
 {
-	return -1;
-}
-
-int _read(int file, char *ptr, int len) {
-	return 0;
-}
-
-int _lseek(int file, int ptr, int dir) {
-	return 0;
-}
-
-int _fstat(int file, struct stat *st) {
-	st->st_mode = S_IFCHR;
-	return 0;
+    uint8_t elem = cb->elems[cb->start];
+    cb->start = INC_AND_WRAP(cb->start, cb->size);
+    return elem;
 }
 
 /**************************************************

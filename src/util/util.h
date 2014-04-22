@@ -22,29 +22,48 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
+* Utility functions and standard standard libraries.
+* 
 *****************************************************/
+
+#ifndef UTIL_UTIL_H
+#define UTIL_UTIL_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**************************************************
 * Includes
 ***************************************************/
 
-#include "util/util.h"
-#include "../template.h"
+#include <stdint.h>
+#include <stdbool.h>
+#include <inttypes.h>
+#include <stddef.h>
+#include <string.h>
+#include <stdio.h>
 
 /**************************************************
-* Defines
+* Public Defines
 ***************************************************/
 
-/* None */
+#define NUMELTS(x) ( sizeof(x) / sizeof((x)[0]) )
+
+#define CLEAR_BITS(reg, bits) do { reg &= ~(bits); } while (0)
+
+#define SET_BITS(reg, bits) do { reg |= (bits); } while (0)
+
+#ifdef USE_IPRINTF
+#define PRINTF(...) iprintf(__VA_ARGS__)
+#else
+#define PRINTF(...) printf(__VA_ARGS__)
+#endif
+
+#define MIN(x,y) ((x) < (y) ? (x) : (y))
 
 /**************************************************
-* Data Types
-**************************************************/
-
-/* None */
-
-/**************************************************
-* Function Prototypes
+* Public Data Types
 **************************************************/
 
 /* None */
@@ -56,22 +75,20 @@
 /* None */
 
 /**************************************************
-* Private Data
-**************************************************/
-
-/* None */
-
-/**************************************************
-* Public Functions
+* Public Function Prototypes
 ***************************************************/
 
-/* None */
+/**
+ * Calibrated (ish) sleep functions.
+ */
+void delay_ms(uint32_t delay);
+void delay_us(uint32_t delay);
 
-/**************************************************
-* Private Functions
-***************************************************/
+#ifdef __cplusplus
+}
+#endif
 
-/* None */
+#endif /* ndef UTIL_UTIL_H */
 
 /**************************************************
 * End of file

@@ -7,7 +7,7 @@ If you have the arm-none-eabi toolchain installed, this will build the example:
 This will build and flash the example on to your Launchpad:
     $ scons flash
 
-Copyright (c) 2012 theJPster (github@thejpster.org.uk)
+Copyright (c) 2012-2014 theJPster (github@thejpster.org.uk)
 
 Permission is hereby granted, free of charge, to any person obtaining a
 copy of this software and associated documentation files (the "Software"),
@@ -36,82 +36,113 @@ FLASH_TOOL = "sudo ./lm4tools/lm4flash/lm4flash"
 # If you have installed the toolchain from https://launchpad.net/gcc-arm-embedded,
 # edit this to point to your gcc. This compiler comes with a bare-metal C library
 # called newlib
-ARM_TOOL_PREFIX = "./gcc-arm-none-eabi-4_6-2012q4/bin/arm-none-eabi"
+ARM_TOOL_PREFIX = "./gcc-arm/bin/arm-none-eabi"
 
 env.Replace(CC="%s-gcc" % ARM_TOOL_PREFIX)
 env.Replace(AS="%s-as" % ARM_TOOL_PREFIX)
 env.Replace(LD="%s-gcc" % ARM_TOOL_PREFIX)
 
-env.Replace(CCCOMSTR = "[CC] $SOURCE -> $TARGET")
-env.Replace(LINKCOMSTR = "[LD] $SOURCE -> $TARGET")
+verbose = ARGUMENTS.get("VERBOSE", 0)
+if not verbose:
+    env.Replace(CCCOMSTR="[CC] $SOURCE -> $TARGET")
+    env.Replace(LINKCOMSTR="[LD] $TARGET")
 
 # Builder which uses objcopy to turn the .elf into something we can flash
-strip = Builder(action='%s-objcopy -O binary ${SOURCE} ${TARGET}' % ARM_TOOL_PREFIX)
-env.Append(BUILDERS={'Strip': strip})
+strip = Builder(
+    action="%s-objcopy -O binary ${SOURCE} ${TARGET}" % ARM_TOOL_PREFIX)
+env.Append(BUILDERS={"Strip": strip})
 
 # Builder which uses objdump to turn the .elf into assembly code
-objdump = Builder(action='%s-objdump -S -d ${SOURCE} > ${TARGET}' % ARM_TOOL_PREFIX)
-env.Append(BUILDERS={'Objdump': objdump})
+objdump = Builder(
+    action="%s-objdump -S -d ${SOURCE} > ${TARGET}" % ARM_TOOL_PREFIX)
+env.Append(BUILDERS={"Objdump": objdump})
 
 # Builder to flash on to Launchpad board
-flash = Builder(action='%s ${SOURCE}' % FLASH_TOOL)
-env.Append(BUILDERS={'Flash': flash})
+flash = Builder(action="%s ${SOURCE}" % FLASH_TOOL)
+env.Append(BUILDERS={"Flash": flash})
 
-# Set some sensible defaults for the Launchpad's processor
+# Builder which uses size to show segment sizes
+size = Builder(action="echo Max 0x40000 flash, 0x8000 SRAM && %s-size -B -x ${SOURCE}" % ARM_TOOL_PREFIX)
+env.Append(BUILDERS={"Size": size})
+
+# Set some sensible defaults for the Launchpad"s processor
 env.Append(CCFLAGS=[
-    '-mthumb',
-    '-mcpu=cortex-m4',
-    '-mfloat-abi=softfp',
-    '-mfpu=fpv4-sp-d16',
-    '-O0',
-    '-g',
-    '-Wall',
-    '-pedantic',
-    '-std=c99',
-    '-fno-stack-protector',
-    '-Isrc'
-    ])
+    "-mthumb",
+    "-mcpu=cortex-m4",
+    # For some reason, FP code causes the chip to crash
+    #"-mfloat-abi=softfp",
+    #"-mfpu=fpv4-sp-d16",
+    "-mfloat-abi=soft",
+    # O2 or higher causes a crash
+    "-O1",
+    "-g",
+    "-Wall",
+    "-pedantic",
+    "-std=c99",
+    "-fno-stack-protector",
+    "-Isrc"
+])
 # Use our custom linker script
 env.Append(LINKFLAGS=[
     "-Wl,-T,basic.ld",
     "-mthumb",
-    '-mcpu=cortex-m4',
-    '-mfloat-abi=softfp',
-    '-mfpu=fpv4-sp-d16',
+    "-mcpu=cortex-m4",
+    # For some reason, FP code causes the chip to crash
+    #"-mfloat-abi=softfp",
+    #"-mfpu=fpv4-sp-d16",
+    "-mfloat-abi=soft",
     "-Wl,-Map,bin/start.map"
-    ])
+])
+
+env.Append(LIBS = [
+    # libm -> the maths library
+    "m",
+])
+
+env.Append(CPPPATH = ['./src'])
 
 sources = [
     'main.c',
-    'misc/src/startup.c',
-    'misc/src/misc.c',
-    'misc/src/libc.c',
-    'timers/src/timers.c',
-    'gpio/src/gpio.c',
-    'uart/src/uart.c',
+    'circbuffer/src/circbuffer.c',
+    'command/src/command.c',
+    'startup/src/startup.c',
+    'startup/src/libc.c',
+    'drivers/misc/src/misc.c',
+    'drivers/timers/src/timers.c',
+    'drivers/gpio/src/gpio.c',
+    'drivers/uart/src/uart.c',
 ]
 
-#env.Append(CCFLAGS=["-DCLOCK_RATE=16000000"])
-env.Append(CCFLAGS=["-DCLOCK_RATE=66666666"])
+# Set the clock rate to 66.67MHz
+# env.Append(CPPDEFINES={"CLOCK_RATE": 16000000})
+env.Append(CPPDEFINES={"CLOCK_RATE": 66666666})
+
+# We want the LCD tall, not wide.
+env.Append(CPPDEFINES=["LCD_ROTATE_DISPLAY"])
+
+# We want a simpler, smaller, printf
+env.Append(CPPDEFINES=["USE_IPRINTF"])
 
 # Compiles the ELF version of our program
-elf = env.Program(target='start.elf', source=sources)
-# SCons doesn't notice the linker script is a dependency, so tell it
-Depends(elf, '../basic.ld')
+elf = env.Program(target="start.elf", source=sources, CPPPATH='.')
+# SCons doesn"t notice the linker script is a dependency, so tell it
+Depends(elf, "../basic.ld")
 
 # Creates the raw binary version from the ELF
-bin = env.Strip(target='start.bin', source=elf)
+bin = env.Strip(target="start.bin", source=elf)
+# Before we create the binary, show how big the ELF is
+Depends(bin, env.Size(source=elf))
 
 # Flashes the raw binary onto the board
-fd = env.Flash(target='flash', source=bin)
+fd = env.Flash(target="flash", source=bin)
 
-# Allow the user to call 'scons flash' to build and flash
-fda = env.Alias('flash', fd)
+# Allow the user to call "scons flash" to build and flash
+fda = env.Alias("flash", fd)
 env.AlwaysBuild(fda)
 
-# Allow the user to call 'scons asm' to build and dump the assembler
-asm = env.Objdump(target='start.s', source=elf)
-env.Alias('asm', asm)
+# Allow the user to call "scons asm" to build and dump the assembler
+asm = env.Objdump(target="start.s", source=elf)
+env.Alias("asm", asm)
 
 # By default, just compile and don't flash
 Default(bin)

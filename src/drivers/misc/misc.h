@@ -2,7 +2,7 @@
 *
 * Stellaris Launchpad Example Project
 *
-* Copyright (c) 2014 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2012-2014 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -22,32 +22,39 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
+* Chip specific utility functions that don't fit in to any other 'driver'
+* 
+* References:
+*
+*     [1] - Stellaris® LM4F121H5QR Microcontroller
+*           Data Sheet
 *****************************************************/
+
+#ifndef MISC_MISC_H_
+#define MISC_MISC_H_
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**************************************************
 * Includes
 ***************************************************/
 
 #include "util/util.h"
-#include "../template.h"
+#include "drivers/lm4f120h5qr.h"
 
 /**************************************************
-* Defines
+* Public Defines
 ***************************************************/
 
 /* None */
 
 /**************************************************
-* Data Types
+* Public Data Types
 **************************************************/
 
-/* None */
-
-/**************************************************
-* Function Prototypes
-**************************************************/
-
-/* None */
+typedef volatile unsigned long reg_t;
 
 /**************************************************
 * Public Data
@@ -56,22 +63,48 @@
 /* None */
 
 /**************************************************
-* Private Data
-**************************************************/
-
-/* None */
-
-/**************************************************
-* Public Functions
+* Public Function Prototypes
 ***************************************************/
 
-/* None */
+/**
+ * Set system clock to a CLOCK_RATE
+ */
+extern void set_clock(void);
 
-/**************************************************
-* Private Functions
-***************************************************/
+/**
+ * Rough and ready sleep function that just
+ * spins in a loop.
+ */
+extern void busy_sleep(uint32_t delay);
 
-/* None */
+/**
+ * Enable an interrupt. See table 2-9 in [1].
+ */
+extern void enable_interrupt(unsigned int interrupt_id);
+
+/**
+ * Disable an interrupt. See table 2-9 in [1].
+ */
+extern void disable_interrupt(unsigned int interrupt_id);
+
+/*
+ * Disable all interrupts.
+ *
+ * Use this to create interrupt-safe critical sections. Disable interrupts for only
+ * the shortest possible period of time.
+ */
+#define disable_interrupts() __asm("cpsid i")
+
+/*
+ * Enable interrupts again.
+ */
+#define enable_interrupts() __asm("cpsie i")
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* ndef MISC_MISC_H_ */
 
 /**************************************************
 * End of file

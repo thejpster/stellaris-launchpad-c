@@ -2,7 +2,7 @@
 *
 * Stellaris Launchpad Example Project
 *
-* Copyright (c) 2012 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2014 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -24,8 +24,8 @@
 *
 *****************************************************/
 
-#ifndef TEMPLATE_H_
-#define TEMPLATE_H_
+#ifndef TEMPLATE_H
+#define TEMPLATE_H
 
 #ifdef __cplusplus
 extern "C" {

@@ -2,7 +2,7 @@
 *
 * Stellaris Launchpad Example Project
 *
-* Copyright (c) 2014 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2012-2014 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -24,27 +24,27 @@
 *
 *****************************************************/
 
+#ifndef COMMAND_H
+#define COMMAND_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**************************************************
 * Includes
 ***************************************************/
 
 #include "util/util.h"
-#include "../template.h"
 
 /**************************************************
-* Defines
+* Public Defines
 ***************************************************/
 
 /* None */
 
 /**************************************************
-* Data Types
-**************************************************/
-
-/* None */
-
-/**************************************************
-* Function Prototypes
+* Public Data Types
 **************************************************/
 
 /* None */
@@ -56,22 +56,18 @@
 /* None */
 
 /**************************************************
-* Private Data
-**************************************************/
-
-/* None */
-
-/**************************************************
-* Public Functions
+* Public Function Prototypes
 ***************************************************/
 
-/* None */
+void command_init(void);
+void command_handle_char(char c);
+void command_handle_chars(const char* p_str, size_t num_chars);
 
-/**************************************************
-* Private Functions
-***************************************************/
+#ifdef __cplusplus
+}
+#endif
 
-/* None */
+#endif /* ndef COMMAND_H */
 
 /**************************************************
 * End of file

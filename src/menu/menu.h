@@ -22,32 +22,70 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
+* Draws a nice menu on the LCD.
+*
 *****************************************************/
+
+#ifndef MENU_H
+#define MENU_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**************************************************
 * Includes
 ***************************************************/
 
 #include "util/util.h"
-#include "../template.h"
 
 /**************************************************
-* Defines
+* Public Defines
 ***************************************************/
 
 /* None */
 
 /**************************************************
-* Data Types
+* Public Data Types
 **************************************************/
 
-/* None */
+enum menu_keypress_t {
+    MENU_KEYPRESS_ENTER,
+    MENU_KEYPRESS_UP,
+    MENU_KEYPRESS_DOWN
+};
 
-/**************************************************
-* Function Prototypes
-**************************************************/
+enum menu_item_type_t {
+    MENU_ITEM_TYPE_SUBMENU,
+    MENU_ITEM_TYPE_ACTION,
+};
 
-/* None */
+/* Forward declare, to allow mutual reference */
+struct menu_item_t;
+struct menu_t;
+
+/*
+ * @return true if menu should be redraw, false otherwise
+ */
+typedef bool (*menu_action_t)(
+    const struct menu_t *p_menu,
+    const struct menu_item_t *p_menu_item
+);
+
+struct menu_item_t {
+    const char *p_label;
+    enum menu_item_type_t type;
+    const struct menu_t *p_submenu;
+    menu_action_t p_fn;
+};
+
+struct menu_t {
+    const char* p_title;
+    size_t num_items;
+    /* Function called when menu closed. */
+    menu_action_t p_back;
+    const struct menu_item_t* p_menu_items;
+};
 
 /**************************************************
 * Public Data
@@ -56,22 +94,34 @@
 /* None */
 
 /**************************************************
-* Private Data
-**************************************************/
-
-/* None */
-
-/**************************************************
-* Public Functions
+* Public Function Prototypes
 ***************************************************/
 
-/* None */
+/*
+ * Display the given menu structure, starting with the top item highlighted.
+ */
+void menu_init(const struct menu_t *p_menu);
 
-/**************************************************
-* Private Functions
-***************************************************/
+/*
+ * Feed a keypress into the menu system.
+ */
+void menu_keypress(enum menu_keypress_t keypress);
 
-/* None */
+/*
+ * Redraw the menu in its current state
+ */
+void menu_redraw(bool blank_screen);
+
+/*
+ * Reset the menu's state - back to the top item in the top menu.
+ */
+void menu_reset(void);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* ndef MENU_H */
 
 /**************************************************
 * End of file

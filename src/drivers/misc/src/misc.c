@@ -4,7 +4,7 @@
 *
 * Setup clocks for the Launchpad board
 *
-* Copyright (c) 2012 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2012-2014 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -30,14 +30,20 @@
 * Includes
 ***************************************************/
 
-#include "gpio/gpio.h"
-#include "misc/misc.h"
+#include "drivers/gpio/gpio.h"
+#include "drivers/misc/misc.h"
 
 /**************************************************
 * Defines
 ***************************************************/
 
-/* None */
+#if CLOCK_RATE == 66666666
+#define SLEEP_LOOPS_PER_MS 6042UL
+#elif CLOCK_RATE == 16000000
+#define SLEEP_LOOPS_PER_MS 1450UL
+#else
+#error CLOCK_RATE not valid
+#endif
 
 /**************************************************
 * Function Prototypes
@@ -117,7 +123,7 @@ void set_clock(void)
      * We could get 80MHz if we danced with RCC2 instead and got 400MHz / 5.
      */
     /* Clear PLL lock status */
-    /* NB: MISC = Masked Interrupt State, not miscellaneous */
+    /* MISC = Masked Interrupt Status & Clear, not miscellaneous */
     SYSCTL_MISC_R = SYSCTL_MISC_PLLLMIS;
 
     /* Enable the PLL. We're OK, BYPASS is still set */
@@ -137,7 +143,6 @@ void set_clock(void)
     /* Switch to PLL */
     CLEAR_BITS(rcc, SYSCTL_RCC_BYPASS);
     SYSCTL_RCC_R = rcc;
-
 #endif
 }
 
@@ -148,8 +153,28 @@ void busy_sleep(uint32_t delay)
 {
     while(delay--)
     {
-        __asm("");
+        __asm("nop");
+        __asm("nop");
+        __asm("nop");
+        __asm("nop");
+        __asm("nop");
+        __asm("nop");
+        __asm("nop");
+        __asm("nop");
     }
+}
+
+/*
+ * Changing compiler optimisations might throw these out of whack.
+ */
+void delay_ms(uint32_t delay)
+{
+    busy_sleep(delay * SLEEP_LOOPS_PER_MS);
+}
+
+void delay_us(uint32_t delay)
+{
+    busy_sleep((delay * SLEEP_LOOPS_PER_MS) / 1000);
 }
 
 /*
@@ -179,7 +204,7 @@ void enable_interrupt(unsigned int interrupt_id)
         NVIC_EN4_R = bit_field; 
         break;
     default:
-        flash_error(LED_RED, LED_BLUE, CLOCK_RATE / 32);
+        gpio_flash_error(LED_RED, LED_GREEN, 1000);
         break;
     }
 }
@@ -211,7 +236,7 @@ void disable_interrupt(unsigned int interrupt_id)
         NVIC_DIS4_R = bit_field; 
         break;
     default:
-        flash_error(LED_RED, LED_BLUE, CLOCK_RATE / 32);
+        gpio_flash_error(LED_RED, LED_BLUE, 1000);
         break;
     }
 }

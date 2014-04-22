@@ -2,7 +2,7 @@
 *
 * Stellaris Launchpad Example Project
 *
-* Copyright (c) 2012 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2012-2014 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -22,14 +22,10 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
-* References:
-*
-*     [1] - Stellaris® LM4F121H5QR Microcontroller
-*           Data Sheet
 *****************************************************/
 
-#ifndef MISC_MISC_H_
-#define MISC_MISC_H_
+#ifndef CIRCBUFFER_H
+#define CIRCBUFFER_H
 
 #ifdef __cplusplus
 extern "C" {
@@ -39,26 +35,26 @@ extern "C" {
 * Includes
 ***************************************************/
 
-#include <stdint.h>
-#include "misc/lm4f120h5qr.h"
+#include "util/util.h"
 
 /**************************************************
 * Public Defines
 ***************************************************/
 
-#define NUMELTS(x) ( sizeof(x) / sizeof((x)[0]) )
-
-#define CLEAR_BITS(reg, bits) do { reg &= ~(bits); } while (0)
-
-#define SET_BITS(reg, bits) do { reg |= (bits); } while (0)
-
-#define printf iprintf
+/* None */
 
 /**************************************************
 * Public Data Types
 **************************************************/
 
-typedef volatile unsigned long reg_t;
+/* Circular buffer object */
+struct circbuffer_t
+{
+    size_t    size;   /* maximum number of elements           */
+    size_t    start;  /* index of oldest element              */
+    size_t    end;    /* index at which to write new element  */
+    uint8_t   *elems;  /* vector of elements                   */
+};
 
 /**************************************************
 * Public Data
@@ -70,31 +66,17 @@ typedef volatile unsigned long reg_t;
 * Public Function Prototypes
 ***************************************************/
 
-/**
- * Set system clock to a CLOCK_RATE
- */
-extern void set_clock(void);
-
-/**
- * Rough and ready sleep function.
- */
-extern void busy_sleep(uint32_t delay);
-
-/**
- * Enable an interrupt. See table 2-9 in [1].
- */
-extern void enable_interrupt(unsigned int interrupt_id);
-
-/**
- * Disable an interrupt. See table 2-9 in [1].
- */
-extern void disable_interrupt(unsigned int interrupt_id);
+void circbuffer_init(struct circbuffer_t *cb, uint8_t *p_buffer, size_t buffer_len);
+bool circbuffer_isfull(struct circbuffer_t *cb);
+bool circbuffer_isempty(struct circbuffer_t *cb);
+void circbuffer_write(struct circbuffer_t *cb, uint8_t elem);
+uint8_t circbuffer_read(struct circbuffer_t *cb);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* ndef MISC_MISC_H_ */
+#endif /* ndef CIRCBUFFER_H */
 
 /**************************************************
 * End of file

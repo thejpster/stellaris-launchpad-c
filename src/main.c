@@ -2,7 +2,7 @@
 *
 * Stellaris Launchpad Example Project
 *
-* Copyright (c) 2013 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2013-2014 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -32,29 +32,32 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "misc/misc.h"
-#include "uart/uart.h"
-#include "gpio/gpio.h"
-#include "timers/timers.h"
+#include "drivers/misc/misc.h"
+#include "drivers/uart/uart.h"
+#include "drivers/gpio/gpio.h"
+#include "drivers/timers/timers.h"
+
+#include "command/command.h"
+#include "circbuffer/circbuffer.h"
+#include "util/util.h"
 
 /**************************************************
 * Defines
 ***************************************************/
 
-/* So we can see the LEDs flashing. Given our busy_sleep
-* implementation, this is about 0.5 seconds */
-#define DELAY (CLOCK_RATE / 32)
+#define ON_MS 100
+#define OFF_MS 900
+
+/* Size of IRQ to userland ring buffer */
+#define MAX_UART_CHARS 16
+
+#define MS_TO_CLOCKS(x) ((x) * (CLOCK_RATE / 1000UL))
 
 /**************************************************
 * Data Types
 **************************************************/
 
-typedef enum button_uart_override_t
-{
-    BUTTON_UART_OVERRIDE_NONE,
-    BUTTON_UART_OVERRIDE_ONE,
-    BUTTON_UART_OVERRIDE_TWO
-} button_uart_override_t;
+/* None */
 
 /**************************************************
 * Function Prototypes
@@ -77,14 +80,15 @@ static void uart_chars_received(
 **************************************************/
 
 static const timer_config_t timer_0_config = {
-    .type = TIMER_SPLIT,
+    .type = TIMER_JOINED,
     .timer_a = {
-        .type = TIMER_SPLIT_PERIODIC,
-        .count_up = false
+        .count_up = true
     }
 };
 
-static button_uart_override_t g_override = BUTTON_UART_OVERRIDE_NONE;
+static struct circbuffer_t g_uart_cb;
+
+static uint8_t g_buffer[MAX_UART_CHARS];
 
 /**************************************************
 * Public Functions
@@ -92,15 +96,19 @@ static button_uart_override_t g_override = BUTTON_UART_OVERRIDE_NONE;
 
 int main(void)
 {
-    button_uart_override_t override = g_override;
+    uint32_t last = 0;
+    bool on_period = false;
 
     /* Set system clock to CLOCK_RATE */
     set_clock();
 
-    enable_peripherals();
+    circbuffer_init(&g_uart_cb, g_buffer, NUMELTS(g_buffer));
+
+    gpio_enable_peripherals();
 
     timer_configure(TIMER_0, &timer_0_config);
     timer_enable(TIMER_0, TIMER_A);
+    timer_set_interval_load(TIMER_0, TIMER_A, 0);
 
     int res = uart_init(
                   UART_ID_0,
@@ -114,66 +122,64 @@ int main(void)
     if (res != 0)
     {
         /* Warn user UART failed to init */
-        flash_error(LED_RED, LED_GREEN, DELAY / 4);
+        gpio_flash_error(LED_RED, LED_GREEN, 250);
     }
 
     /* iprintf is a non-float version of printf (it won't print floats).
      * Using the full printf() would double the code size of this small example program. */
     iprintf("Hello %s, %d!\n", "world", 123);
 
+    command_init();
+
     while (1)
     {
-        gpio_set_output(LED_BLUE, 0);
-        gpio_set_output(LED_RED, 0);
-        gpio_set_output(LED_GREEN, 0);
+        uint32_t diff, now;
 
-        busy_sleep(DELAY);
+        now = timer_get_value(TIMER_0, TIMER_A);
 
-        printf("timer0 = 0x%08lx\n", timer_get_value(TIMER_0, TIMER_A));
+        diff = now - last;
 
-        if (override != g_override)
+        /* --+---------+-----------+----
+         *   | Off...   | On...    | Off...
+         * --+---------+-----------+----
+         */
+
+        if (diff > MS_TO_CLOCKS(ON_MS+OFF_MS))
         {
-            const char *msg;
-            override = g_override;
-            switch (override)
+            /* Enter off period */
+            gpio_set_output(LED_BLUE, 0);
+            gpio_set_output(LED_RED, 0);
+            gpio_set_output(LED_GREEN, 0);
+            /* Reset LED timer */
+            last = now;
+            on_period = false;
+        }
+        else if ((diff > MS_TO_CLOCKS(OFF_MS)) && !on_period)
+        {
+            /* Enter on period, printing some debug as we do. */
+            if (!gpio_read_input(BUTTON_ONE))
             {
-            case BUTTON_UART_OVERRIDE_NONE:
-                msg = "off";
-                break;
-            case BUTTON_UART_OVERRIDE_ONE:
-                msg = "Button #1";
-                break;
-            case BUTTON_UART_OVERRIDE_TWO:
-                msg = "Button #2";
-                break;
-            default:
-                msg = "Unknown";
-                break;
+                /* Button one pressed as input is low */
+                gpio_set_output(LED_BLUE, 1);
             }
-            iprintf("Override is now %s\n", msg);
+            else if (!gpio_read_input(BUTTON_TWO))
+            {
+                /* Button two pressed as input is low */
+                gpio_set_output(LED_RED, 1);
+            }
+            else
+            {
+                /* Neither button pressed */
+                gpio_set_output(LED_GREEN, 1);
+            }
+            on_period = true;
         }
 
-        if (!gpio_read_input(BUTTON_ONE) || (override == BUTTON_UART_OVERRIDE_ONE))
+        while (!circbuffer_isempty(&g_uart_cb))
         {
-            /* Button one pressed as input is low */
-            gpio_set_output(LED_BLUE, 1);
-            /* We could also use iprintf instead */
-            uart_write_str(UART_ID_0, "blue\n");
+            char c = (char) circbuffer_read(&g_uart_cb);
+            command_handle_char(c);
         }
-        else if (!gpio_read_input(BUTTON_TWO) || (override == BUTTON_UART_OVERRIDE_TWO))
-        {
-            /* Button two pressed as input is low */
-            gpio_set_output(LED_RED, 1);
-            uart_write_str(UART_ID_0, "red\n");
-        }
-        else
-        {
-            /* Neither button pressed */
-            gpio_set_output(LED_GREEN, 1);
-            uart_write_str(UART_ID_0, "green\n");
-        }
-
-        busy_sleep(DELAY);
 
     }
 
@@ -195,27 +201,17 @@ void uart_chars_received(
     /* Don't do any printf here - we're in an interrupt and we
      * need to get out of it as quickly as possible.
      */
-    size_t i;
-    for (i = 0; i < buffer_size; i++)
+    while (buffer_size)
     {
-        /* Deal with received characters */
-        char c = buffer[i];
-        switch (c)
+        if (!circbuffer_isfull(&g_uart_cb))
         {
-        case '1':
-            /* Pretend button one is pressed */
-            g_override = BUTTON_UART_OVERRIDE_ONE;
-            break;
-        case '2':
-            /* Pretend button two is pressed */
-            g_override = BUTTON_UART_OVERRIDE_TWO;
-            break;
-        default:
-            /* Stop pretending anything's pressed */
-            g_override = BUTTON_UART_OVERRIDE_NONE;
-            break;
+            /* Drop chars if buffer full */
+            circbuffer_write(&g_uart_cb, *buffer);
         }
+        buffer_size--;
+        buffer++;
     }
+
 }
 
 /**************************************************

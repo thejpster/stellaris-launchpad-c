@@ -2,7 +2,10 @@
 *
 * Stellaris Launchpad Example Project
 *
-* Copyright (c) 2012 theJPster (www.thejpster.org.uk)
+* This module handles the various counter/timer peripherals
+* in the LM4F.
+*
+* Copyright (c) 2013-2014 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -22,8 +25,6 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
-* This module handles the various counter/timer peripherals
-* in the LM4F.
 *
 *****************************************************/
 
@@ -38,7 +39,7 @@ extern "C" {
 * Includes
 ***************************************************/
 
-#include <stdbool.h>
+#include "util/util.h"
 
 /**************************************************
 * Public Defines
@@ -141,6 +142,12 @@ typedef struct timer_config_t
     bool rtc_stall_enable;
 } timer_config_t;
 
+/*
+ * Functions matching this prototype can be registered and called when
+ * timer interrupts fire.
+ */
+typedef void (*timer_interrupt_handler_t)(timer_module_t timer, timer_ab_t ab, void* p_context, uint32_t n_context);
+
 /**************************************************
 * Public Data
 **************************************************/
@@ -160,6 +167,12 @@ void timer_disable(timer_module_t timer, timer_ab_t ab);
 void timer_interrupt_enable(timer_module_t timer, timer_interrupt_t interrupt);
 
 void timer_interrupt_disable(timer_module_t timer, timer_interrupt_t interrupt);
+
+void timer_register_handler(
+    timer_module_t timer,
+    timer_ab_t ab,
+    timer_interrupt_handler_t handler,
+    void* p_context, uint32_t n_context);
 
 bool timer_interrupt_raw_status(timer_module_t timer, timer_interrupt_t interrupt);
 

@@ -15,3 +15,17 @@
 *.exe
 *.out
 *.app
+
+# The compiler and other tools
+/gcc-arm*
+/lm4tools
+
+# The output directory
+/bin
+
+# CTags
+.tags*
+
+# Sublime
+*.sublime-workspace
+

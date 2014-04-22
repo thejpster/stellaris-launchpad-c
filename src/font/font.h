@@ -2,7 +2,7 @@
 *
 * Stellaris Launchpad Example Project
 *
-* Copyright (c) 2014 theJPster (www.thejpster.org.uk)
+* Copyright (c) 2013-2014 theJPster (www.thejpster.org.uk)
 *
 * Permission is hereby granted, free of charge, to any person obtaining a
 * copy of this software and associated documentation files (the "Software"),
@@ -22,29 +22,31 @@
 * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 * DEALINGS IN THE SOFTWARE.
 *
+* Code for displaying text/numbers on the LCD.
+* 
 *****************************************************/
+
+#ifndef FONT_H
+#define FONT_H
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**************************************************
 * Includes
 ***************************************************/
 
-#include "util/util.h"
-#include "../template.h"
+#include "drivers/lcd/lcd.h"
 
 /**************************************************
-* Defines
+* Public Defines
 ***************************************************/
 
 /* None */
 
 /**************************************************
-* Data Types
-**************************************************/
-
-/* None */
-
-/**************************************************
-* Function Prototypes
+* Public Data Types
 **************************************************/
 
 /* None */
@@ -56,22 +58,37 @@
 /* None */
 
 /**************************************************
-* Private Data
-**************************************************/
-
-/* None */
-
-/**************************************************
-* Public Functions
+* Public Function Prototypes
 ***************************************************/
 
-/* None */
+void font_draw_number_large(
+    lcd_row_t x, lcd_col_t y,
+    uint16_t number,
+    unsigned int pad_width,
+    lcd_colour_t fg,
+    lcd_colour_t bg
+);
 
-/**************************************************
-* Private Functions
-***************************************************/
+void font_draw_text_small(
+    lcd_row_t x, lcd_col_t y,
+    const char* p_message,
+    lcd_colour_t fg,
+    lcd_colour_t bg,
+    bool monospace
+);
 
-/* None */
+size_t font_draw_text_small_len(
+    const char* p_message,
+    bool monospace
+);
+
+void font_glyph_width_small(char x);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* ndef FONT_H */
 
 /**************************************************
 * End of file
